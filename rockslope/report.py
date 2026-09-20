@@ -165,7 +165,7 @@ class Report:
             left = f"{proj.get('Proje', '')}  ·  {proj.get('Konum', '')}"
             canvas.drawString(15 * mm, 9.5 * mm, left[:70])
             canvas.drawRightString(w - 15 * mm, 9.5 * mm, f"{proj.get('Tarih', '')}   ·   Sayfa {doc.page}")
-            canvas.setFont(self.font, 6.5); canvas.drawString(15 * mm, 5.5 * mm, "Kinematix v2 — limit denge analiz aracı")
+            canvas.setFont(self.font, 6.5); canvas.drawString(15 * mm, 5.5 * mm, "Kinematix v1 — limit denge analiz aracı")
             canvas.restoreState()
         return cb
 

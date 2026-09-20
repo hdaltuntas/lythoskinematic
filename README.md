@@ -1,4 +1,4 @@
-# Kinematix v2.1 — Kaya Şevi Stabilite Analizi (PySide6)
+# Kinematix v1.0 — Kaya Şevi Stabilite Analizi (PySide6)
 
 Hoek & Bray limit denge yöntemleriyle **kama (Swedge)**, **düzlemsel (RocPlane)** ve **blok devrilme (RocTopple)**
 analizi; bulon karelaj/boy tasarımı; profesyonel PDF raporlama.
@@ -45,7 +45,8 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-Lisans notu: PySide6 LGPL'dir; kurum içi dağıtım için ek lisans gerekmez.
+## Lisans
+MIT — bkz. [LICENSE](LICENSE). Bağımlılıklardan PySide6 LGPL'dir; kurum içi dağıtım için ek lisans gerekmez.
 
 ## Sorun giderme (Windows)
 **`ImportError: DLL load failed while importing QtCore`** → iki farklı Qt aynı anda yüklenmiş ya da PySide6/shiboken6 sürümleri uyumsuz.

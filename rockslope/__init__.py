@@ -21,4 +21,4 @@ from .bolts import (BoltSpec, BoltPattern, BoltCheck, bolt_pattern_planar, bolt_
                     bolt_check_planar, bolt_check_wedge, bolt_options_table, STANDARD_LENGTHS)
 from .report import Report, METHOD_TEXT
 
-__version__ = "2.0.0"
+__version__ = "1.0.0"

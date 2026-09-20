@@ -1,64 +1,74 @@
-# Kinematix v1.0 — Kaya Şevi Stabilite Analizi (PySide6)
+**English** | [Türkçe](README.tr.md)
 
-Hoek & Bray limit denge yöntemleriyle **kama (Swedge)**, **düzlemsel (RocPlane)** ve **blok devrilme (RocTopple)**
-analizi; bulon karelaj/boy tasarımı; profesyonel PDF raporlama.
+# Kinematix v1.0 — Rock Slope Stability Analysis (PySide6)
 
-## Kurulum ve çalıştırma
+Limit-equilibrium analysis of **wedge (Swedge)**, **planar (RocPlane)** and **toppling (RocTopple)**
+failure using Hoek & Bray methods; rock bolt spacing/length design; professional PDF reporting.
+
+## Screenshots
+| Light theme | Dark theme |
+|---|---|
+| ![Light theme](assets/screenshot_light.png) | ![Dark theme](assets/screenshot_dark.png) |
+
+## Install & run
 ```
 pip install -r requirements.txt
-python kinematix.py          # açık/koyu tema, F5-F8 kısayolları
+python kinematix.py          # light/dark theme, F5-F8 shortcuts
 ```
 
-## Yapı
+## Layout
 ```
-rockslope/            hesap çekirdeği (arayüzden bağımsız)
-  core.py             vektör/geometri yardımcıları
-  style.py            ortak çizim stili
-  wedge.py            kama: geometri, analiz, destek, H&B doğrulama, 3D, stereonet
-  planar.py           düzlemsel kayma: analiz, destek, 2D kesit
-  toppling.py         blok devrilme: su + sismik + topuk ankrajı, kesit
-  bolts.py            karelaj/boy önerisi, seçilen tasarımın kapasite kontrolü
-  report.py           PDF rapor (reportlab)
-kinematix.py          PySide6 arayüzü: dock girdi paneli, sekmeli sonuç/grafik/tablo, arka planda öneri matrisi,
-                      açık/koyu tema (QSettings ile hatırlanır), son girdiler, JSON kaydet/yükle, PDF
-tests/                pytest doğrulama paketi (kapalı-form çözümlerle karşılaştırma)
+rockslope/            computation core (independent of the UI)
+  core.py             vector/geometry helpers
+  style.py            shared plotting style
+  wedge.py            tetrahedral wedge: geometry, analysis, support, H&B validation, 3D, stereonet
+  planar.py           planar sliding: analysis, support, 2D section
+  toppling.py         block toppling: water + seismic + toe anchor, section
+  bolts.py            bolt spacing/length design, capacity check for a chosen design
+  report.py           PDF report (reportlab)
+kinematix.py          PySide6 UI: dockable input panel, tabbed results/plot/table, background
+                      support-design matrix, light/dark theme (remembered via QSettings),
+                      last inputs, JSON save/load, PDF
+tests/                pytest validation suite (comparison against closed-form solutions)
 ```
 
-## Kısayollar
-F5 Analiz · F6 Gerekli destek · F7 Bulon önerisi · F8 Bulon kontrol · Ctrl+P PDF · Ctrl+S / Ctrl+O kaydet / yükle
+## Shortcuts
+F5 Analyze · F6 Required support · F7 Bolt design · F8 Bolt check · Ctrl+P PDF · Ctrl+S / Ctrl+O save / load
 
-## Tek dosya exe (isteğe bağlı)
+## Single-file executable (optional)
 ```
 pip install pyinstaller
 pyinstaller --noconfirm --windowed --name Kinematix --collect-all reportlab kinematix.py
 ```
-Windows'ta Türkçe karakterler için rapor Arial (C:\Windows\Fonts) kullanır; Linux'ta DejaVu Sans.
+On Windows the report uses Arial (`C:\Windows\Fonts`) for Turkish characters; on Linux, DejaVu Sans.
 
-## Doğrulama
-kama — Hoek & Bray kapalı-form kısa çözümle birebir (kuru 1.696 / dolu 1.065);
-düzlemsel — c=0 kuru: tanφ/tanψp; devrilme — Wyllie & Mah Bölüm 9 örneği (blok yükseklikleri, modlar, limit denge φ≈38°).
+## Validation
+wedge — matches the Hoek & Bray closed-form short solution exactly (dry 1.696 / flooded 1.065);
+planar — c=0, dry: tanφ/tanψp; toppling — Wyllie & Mah Chapter 9 example (block heights, failure modes,
+limit-equilibrium φ≈38°).
 
-Bu değerler `tests/` altında pytest ile sabitlenmiştir; çekirdek modüllerde (`rockslope/`) değişiklik
-yapıldığında regresyonu yakalamak için çalıştırın:
+These values are pinned with pytest under `tests/`; run it to catch regressions whenever the
+core modules (`rockslope/`) change:
 ```
 pip install -r requirements-dev.txt
 pytest
 ```
 
-## Lisans
-MIT — bkz. [LICENSE](LICENSE). Bağımlılıklardan PySide6 LGPL'dir; kurum içi dağıtım için ek lisans gerekmez.
+## License
+MIT — see [LICENSE](LICENSE). PySide6 is LGPL; no additional license is required for in-house
+distribution.
 
-## Sorun giderme (Windows)
-**`ImportError: DLL load failed while importing QtCore`** → iki farklı Qt aynı anda yüklenmiş ya da PySide6/shiboken6 sürümleri uyumsuz.
-1. Teşhis: `python check_env.py` (PySide6 ve shiboken6 sürümleri aynı olmalı; PyQt5/PyQt6 varsa çakışma kaynağıdır).
-2. Temiz kurulum: `pip uninstall -y PySide6 PySide6-Essentials PySide6-Addons shiboken6` → `pip install PySide6`
-3. En sağlam yol, ayrı sanal ortam:
+## Troubleshooting (Windows)
+**`ImportError: DLL load failed while importing QtCore`** → two different Qt installs loaded at once, or mismatched PySide6/shiboken6 versions.
+1. Diagnose: `python check_env.py` (PySide6 and shiboken6 versions must match; PyQt5/PyQt6 present is a common conflict source).
+2. Clean reinstall: `pip uninstall -y PySide6 PySide6-Essentials PySide6-Addons shiboken6` → `pip install PySide6`
+3. Most robust: a separate virtual environment:
    ```
    python -m venv venv
    venv\Scripts\activate
    pip install -r requirements.txt
    python kinematix.py
    ```
-4. Anaconda kullanıyorsanız: `conda create -n kinematix python=3.11` → `conda activate kinematix` → `pip install -r requirements.txt`.
-   (Anaconda base ortamındaki PyQt5/qt paketleri ile pip PySide6 karışmasın.)
-5. Hâlâ hata varsa Microsoft Visual C++ 2015–2022 Redistributable (x64) kurulu olmalı.
+4. If using Anaconda: `conda create -n kinematix python=3.11` → `conda activate kinematix` → `pip install -r requirements.txt`.
+   (Avoid mixing the PyQt5/qt packages in the Anaconda base environment with pip-installed PySide6.)
+5. If it still fails, install the Microsoft Visual C++ 2015–2022 Redistributable (x64).

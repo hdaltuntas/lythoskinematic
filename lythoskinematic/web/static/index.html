@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lythos Kinematic</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header>
+  <h1>Lythos Kinematic <span id="tagline"></span></h1>
+  <div class="spacer"></div>
+  <label class="inline"><span id="lblLanguage"></span>
+    <select id="language"></select>
+  </label>
+  <button id="btnOpen"></button>
+  <button id="btnSave"></button>
+  <button id="btnReport"></button>
+  <button id="btnTheme" class="icon" title="">◐</button>
+  <input type="file" id="fileInput" accept=".json" hidden>
+</header>
+
+<nav class="modules">
+  <button data-module="screening" class="active" id="tabScreening"></button>
+  <button data-module="equilibrium" id="tabEquilibrium"></button>
+</nav>
+
+<main>
+  <!-- ------------------------------------------------------- left: inputs -->
+  <aside class="left">
+    <section id="paneScreeningInputs">
+      <div id="screeningForm"></div>
+
+      <h2 id="lblJoints"></h2>
+      <table class="joints" id="jointTable">
+        <thead><tr id="jointHead"></tr></thead>
+        <tbody id="jointBody"></tbody>
+      </table>
+      <div class="row">
+        <button id="btnAddRow"></button>
+        <button id="btnDelRow"></button>
+      </div>
+
+      <div class="actions">
+        <button id="btnScreen" class="primary"></button>
+        <button id="btnHandoff"></button>
+      </div>
+    </section>
+
+    <section id="paneEquilibriumInputs" hidden>
+      <div class="field">
+        <label id="lblMode"></label>
+        <select id="mode"></select>
+      </div>
+      <div class="actions">
+        <button id="btnAnalyse" class="primary"></button>
+        <button id="btnRequired"></button>
+        <button id="btnBolts"></button>
+        <button id="btnBoltCheck"></button>
+      </div>
+      <div id="equilibriumForm"></div>
+    </section>
+  </aside>
+
+  <!-- ------------------------------------------------------ right: results -->
+  <div class="results">
+    <div class="tabs" id="viewTabs"></div>
+    <div class="view" id="view"></div>
+  </div>
+</main>
+
+<div id="statusBar">
+  <span class="msg" id="statusMsg"></span>
+  <div class="bar"><div id="progressBar"></div></div>
+  <span id="statusRight"></span>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

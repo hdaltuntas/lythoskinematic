@@ -1,5 +1,5 @@
 """
-Çekirdek hesap modüllerinin (lythos/rockslope/) bağımsız kapalı-form çözümlere karşı
+Çekirdek hesap modüllerinin (lythoskinematic/rockslope/) bağımsız kapalı-form çözümlere karşı
 regresyon testleri. Bunlar README'deki "Doğrulama" bölümünde belgelenen
 referans değerlerdir; wedge/planar/toppling üzerinde yapılacak bir değişiklik
 bu değerleri bozarsa test burada yakalar.
@@ -7,9 +7,9 @@ bu değerleri bozarsa test burada yakalar.
 import numpy as np
 import pytest
 
-from lythos.rockslope.planar import PlanarInput, planar_analyze
-from lythos.rockslope.wedge import WedgeInput, Joint, Plane, Water, analyze, hoek_bray_short
-from lythos.rockslope.toppling import TopplingInput, toppling_analyze
+from lythoskinematic.rockslope.planar import PlanarInput, planar_analyze
+from lythoskinematic.rockslope.wedge import WedgeInput, Joint, Plane, Water, analyze, hoek_bray_short
+from lythoskinematic.rockslope.toppling import TopplingInput, toppling_analyze
 
 
 def test_planar_dry_cohesionless_matches_closed_form():

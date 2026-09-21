@@ -1,15 +1,15 @@
 """
-Kinematik tarama çekirdeği (lythos/kinematics/) için testler.
+Kinematik tarama çekirdeği (lythoskinematic/kinematics/) için testler.
 
 Markland kriterleri elle doğrulanabilir sınır durumlarına, kesişim çizgisi ise
-limit denge çekirdeğinin (lythos/rockslope/) bağımsız vektör uygulamasına karşı
+limit denge çekirdeğinin (lythoskinematic/rockslope/) bağımsız vektör uygulamasına karşı
 sınanır — iki ayrı uygulamanın aynı geometriyi vermesi gerekir.
 """
 import numpy as np
 import pytest
 
-from lythos.kinematics import engine as eng
-from lythos.rockslope.core import plane_normal, unit, vector_to_trend_plunge
+from lythoskinematic.kinematics import engine as eng
+from lythoskinematic.rockslope.core import plane_normal, unit, vector_to_trend_plunge
 
 SLOPE_DIP, SLOPE_DIR, PHI, LATERAL = 72.0, 230.0, 31.0, 20.0
 

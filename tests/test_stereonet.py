@@ -1,5 +1,5 @@
 """
-Ortak stereonet projeksiyonu (lythos/stereonet.py) için testler.
+Ortak stereonet projeksiyonu (lythoskinematic/stereonet.py) için testler.
 
 Bu modül mplstereonet'in yerini aldığı için, projeksiyonun bilinen analitik
 değerleri ve limit denge çekirdeğinin vektör yardımcılarıyla tutarlılığı sınanır.
@@ -7,8 +7,8 @@ değerleri ve limit denge çekirdeğinin vektör yardımcılarıyla tutarlılı�
 import numpy as np
 import pytest
 
-from lythos import stereonet as st
-from lythos.rockslope.core import down_dip_vector, plane_normal, trend_plunge_vector
+from lythoskinematic import stereonet as st
+from lythoskinematic.rockslope.core import down_dip_vector, plane_normal, trend_plunge_vector
 
 
 def test_vertical_line_projects_to_centre():

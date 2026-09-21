@@ -1,5 +1,5 @@
 """
-İki dilli metin katmanı (lythos/i18n.py) ve limit denge çekirdeğinin çevirileri.
+İki dilli metin katmanı (lythoskinematic/i18n.py) ve limit denge çekirdeğinin çevirileri.
 
 Hesap sonuçlarının dilden bağımsız olması, buna karşılık kullanıcıya görünen her
 metnin dili izlemesi gerekir. Blok modu gibi iç anahtarlar (renk eşlemesinde
@@ -8,13 +8,13 @@ kullanılır) hiçbir dilde değişmemelidir.
 import numpy as np
 import pytest
 
-from lythos import i18n
-from lythos.rockslope import text as rtext
-from lythos.rockslope.bolts import BoltSpec, bolt_check_planar
-from lythos.rockslope.planar import PlanarInput, planar_analyze, planar_required_support
-from lythos.rockslope.report import METHOD, PROJECT_FIELDS, PROJECT_LABEL
-from lythos.rockslope.toppling import TopplingInput, toppling_analyze
-from lythos.rockslope.wedge import Joint, Plane, Seismic, Support, Water, WedgeInput, analyze
+from lythoskinematic import i18n
+from lythoskinematic.rockslope import text as rtext
+from lythoskinematic.rockslope.bolts import BoltSpec, bolt_check_planar
+from lythoskinematic.rockslope.planar import PlanarInput, planar_analyze, planar_required_support
+from lythoskinematic.rockslope.report import METHOD, PROJECT_FIELDS, PROJECT_LABEL
+from lythoskinematic.rockslope.toppling import TopplingInput, toppling_analyze
+from lythoskinematic.rockslope.wedge import Joint, Plane, Seismic, Support, Water, WedgeInput, analyze
 
 
 @pytest.fixture(autouse=True)

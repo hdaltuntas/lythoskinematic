@@ -2,11 +2,12 @@ __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+.ruff_cache/
 build/
 dist/
-*.spec
 *.egg-info/
 .venv/
 venv/
 *.pdf
+out/
 .DS_Store

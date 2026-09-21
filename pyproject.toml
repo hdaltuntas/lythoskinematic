@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lythoskinematic"
+version = "0.1.0"
+description = "Rock slope kinematics and stability: Markland screening on a stereonet, Monte Carlo probability of failure, and limit-equilibrium analysis of wedge, planar and toppling failure with bolt design and PDF reporting."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Hasan Deniz Altuntaş", email = "lythosfea@gmail.com" }]
+keywords = [
+    "geotechnical", "rock slope", "slope stability", "kinematic analysis",
+    "markland", "stereonet", "wedge", "planar sliding", "toppling",
+    "limit equilibrium", "factor of safety", "monte carlo", "rock bolt",
+    "hoek brown", "civil engineering", "mining",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Natural Language :: English",
+    "Natural Language :: Turkish",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+# The program's output is drawings and reports - stereonets, sections, PDFs -
+# so the plotting and reporting libraries are required, not optional. The web
+# interface itself needs nothing beyond the standard library.
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "matplotlib>=3.7",
+    "reportlab>=4.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "ruff>=0.4", "build>=1.0", "twine>=5.0"]
+
+[project.urls]
+Homepage = "https://github.com/hdaltuntas/lythoskinematic"
+Repository = "https://github.com/hdaltuntas/lythoskinematic"
+Issues = "https://github.com/hdaltuntas/lythoskinematic/issues"
+
+[project.scripts]
+lythos-kinematic = "lythoskinematic.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["lythoskinematic*"]
+
+[tool.setuptools.package-data]
+"lythoskinematic.web" = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110

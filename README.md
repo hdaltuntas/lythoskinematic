@@ -1,74 +1,89 @@
 **English** | [Türkçe](README.tr.md)
 
-# Lythos Suite v1.0
+# Lythos Kinematic
 
-A geotechnical analysis application suite. Its first module, **Lythos Kinematic**,
-brings rock slope kinematics and stability into a single workflow:
+Rock slope kinematics and stability, driven from your browser. Two steps, one workflow:
 
-1. **Kinematic Screening** — Markland test, stereonet and Monte Carlo probabilistic
-   analysis establish *which failure mechanism is kinematically possible*.
-2. **Limit Equilibrium** — for the mechanism found critical, compute the *factor of
+1. **Kinematic screening** — the Markland test on a stereonet, pole density and a Monte
+   Carlo probability of failure establish *which failure mechanism is possible*.
+2. **Limit equilibrium** — for the mechanism found critical, compute the *factor of
    safety, the required support and the bolt design*.
 
-The two steps are bridged: the most critical discontinuity or intersection found
-during screening is transferred into the limit-equilibrium inputs with one click.
-The whole application — both modules, every result text, plot label and PDF report —
-is fully bilingual in **Turkish and English**, switchable at runtime from the toolbar.
+The two steps are bridged: the most critical discontinuity or intersection found during
+screening is written into the limit-equilibrium inputs with one click. The whole
+application — every label, result text, plot and PDF report — is bilingual in **Turkish
+and English**, switchable at runtime.
 
-> This application merges two formerly separate programs: **SlopeKinematics**
-> (kinematics + probability) and **Kinematix** (limit equilibrium + bolting +
-> reporting). See [Merge notes](#merge-notes).
+The interface is a small HTTP server on your own machine, driven from a browser. That
+keeps the program usable over a remote session or inside a container, where a desktop
+toolkit would need a display it does not have, and it costs no dependency beyond the
+standard library.
+
+> This is the sibling of [LythosFEA](https://github.com/hdaltuntas/lythos) and follows
+> the same architecture. It merges two formerly separate desktop programs,
+> **SlopeKinematics** and **Kinematix**; see [Background](#background).
 
 ## Screenshots
 
-| Kinematic screening (light theme) | Limit equilibrium (dark theme) |
+| Kinematic screening | Bolt spacing × length matrix |
 |---|---|
-| ![Kinematic screening](assets/screenshot_screening.png) | ![Limit equilibrium](assets/screenshot_equilibrium_dark.png) |
+| ![Kinematic screening](assets/screening.png) | ![Bolt matrix](assets/bolts.png) |
 
-| Probabilistic analysis report | Limit equilibrium in English |
-|---|---|
-| ![Probabilistic analysis](assets/screenshot_probability.png) | ![English interface](assets/screenshot_equilibrium_en.png) |
+| Probabilistic analysis | Wedge analysis | English interface, dark theme |
+|---|---|---|
+| ![Probability](assets/probability.png) | ![Wedge](assets/wedge.png) | ![Dark theme](assets/english_dark.png) |
 
 ## Install & run
 
 ```bash
-pip install -r requirements.txt
-python lythos_suite.py          # or:  python -m lythos
+pip install lythoskinematic
+lythos-kinematic                 # opens the interface in your browser
 ```
 
-Python 3.9+ is required. The UI is built on PySide6 (LGPL); `mplstereonet` and
-`PyQt5` are **no longer needed** (see below).
+From a clone, with nothing installed but the scientific stack:
 
-## Module: Lythos Kinematic
+```bash
+pip install numpy scipy matplotlib reportlab
+python main.py
+```
 
-### 1 · Kinematic Screening
+Python 3.10+ is required.
+
+## Command line
+
+```bash
+lythos-kinematic                          # web interface (the default)
+lythos-kinematic web --port 9000 --lang EN --no-browser
+lythos-kinematic example -o inputs.json   # a starter input file
+lythos-kinematic screen inputs.json -o screening.pdf
+lythos-kinematic run inputs.json --mode wedge -o wedge.pdf
+```
+
+`screen` and `run` read the same JSON the interface saves, so a case set up in the
+browser can be re-run unattended.
+
+## What it computes
+
+### Kinematic screening
 - **Kinematic tests:** planar sliding, wedge sliding (Markland), flexural toppling
   (Goodman & Bray)
-- **Stereonet:** equal-area (Schmidt) lower-hemisphere projection, pole density
-  contour (Kamb counting cone), critical zone sweep, friction / sliding limit cone
-- **Monte Carlo:** overall and component-wise Probability of Failure (PoF) accounting
-  for discontinuity orientation uncertainty (dip and dip direction std. dev.); runs
-  on a background thread, the UI never freezes
-- **PDF report:** kinematic checks + probabilistic analysis + stereonet in one file
+- **Stereonet:** equal-area (Schmidt) lower-hemisphere projection, pole density contour
+  (Kamb counting cone), critical zone sweep, friction / sliding limit cone
+- **Monte Carlo:** overall and component-wise probability of failure accounting for
+  discontinuity orientation uncertainty; runs on a background thread, the page stays live
+- **PDF report:** checks, probabilities and the stereonet in one file
 
-### 2 · Limit Equilibrium
-- **Wedge (Swedge):** tetrahedral wedge geometry, Hoek & Bray vector limit
-  equilibrium, 3D visualisation, stereonet
+### Limit equilibrium
+- **Wedge (Swedge):** tetrahedral wedge geometry, Hoek & Bray vector limit equilibrium,
+  3D view and stereonet
 - **Planar (RocPlane):** tension crack, water pressure, seismic load, 2D section
 - **Toppling (RocTopple):** Goodman & Bray block toppling, water + seismic + toe anchor
-- **Support design:** support force required for a target FS, bolt spacing × length
-  recommendation matrix, capacity/FS check for the chosen design
+- **Support design:** force required for a target FS, a clickable bolt spacing × length
+  matrix, and a capacity/FS check for the design you pick
 - **PDF report:** project data, input tables, figures, force-balance tables
 
-### Language
-The toolbar language selector switches the entire suite between Turkish and English:
-menus, input forms, result texts, warnings, error messages, plot labels and the PDF
-report. Switching rebuilds the panels without losing the inputs, and never changes a
-number — only the text.
-
-### The bridge: screening → limit equilibrium
-The **"→ Send critical result to Limit Equilibrium"** button writes the most critical
-component into the limit-equilibrium inputs and runs the analysis:
+### The bridge
+**"→ Send critical result to limit equilibrium"** transfers the most critical component:
 
 | Screening mode | Transferred inputs |
 |---|---|
@@ -76,120 +91,85 @@ component into the limit-equilibrium inputs and runs the analysis:
 | Wedge | Joint 1 and Joint 2 dip/dip dir, slope face dip/dip dir, φ |
 | Toppling | discontinuity dip ψd, slope face ψf, φ |
 
-## Shortcuts
-
-In the limit-equilibrium panel: `F5` analyse · `F6` required support · `F7` bolt
-recommendation · `F8` bolt check · `Ctrl+P` PDF · `Ctrl+S` / `Ctrl+O` save / load
-inputs. Suite-wide: `F1` about.
-
 ## Layout
 
 ```
-lythos_suite.py            entry point
-lythos/
-  app.py                   Lythos Suite shell (module tabs, theme, language, persistence)
-  theme.py                 shared light/dark theme (QSS + matplotlib palette)
+main.py                    run from a clone without installing
+lythoskinematic/
+  cli.py                   command line (web · screen · run · example)
   i18n.py                  language switch; bilingual text helper T("tr", "en")
-  stereonet.py             shared lower-hemisphere stereonet projection (no extra deps)
-  kinematics/              kinematic screening core
-    engine.py              Markland criteria + Monte Carlo (independent of Qt)
+  forms.py                 input schema and readers — one definition per field
+  stereonet.py             shared lower-hemisphere projection (no extra deps)
+  render.py                figures as PNG, for the browser and the report alike
+  theme.py                 plot palette
+  kinematics/              screening core — independent of the interface
+    engine.py              Markland criteria + Monte Carlo
     plots.py               screening stereonet
-    htmlreport.py          HTML report bodies (shared by screen and PDF)
+    htmlreport.py          HTML report bodies
+    report.py              screening PDF report
     i18n.py                TR/EN strings
-  rockslope/               limit-equilibrium core (independent of Qt)
-    core.py wedge.py planar.py toppling.py bolts.py report.py style.py
-    text.py                shared bilingual labels (summary alignment, block modes)
-  ui/                      PySide6 interface
-    screening.py           kinematic screening panel
-    equilibrium.py         limit-equilibrium panel
-    kinematic.py           Lythos Kinematic module (both panels + the bridge)
-    widgets.py qt.py       shared widgets, Qt binding
-tests/                     pytest validation suite
+  rockslope/               limit-equilibrium core — independent of the interface
+    core.py wedge.py planar.py toppling.py bolts.py report.py style.py text.py
+  web/
+    server.py              HTTP routes (standard library only)
+    session.py             the one working session: analyses, figures, reports
+    strings.py             interface text, served to the page
+    static/                index.html · style.css · app.js
+tests/                     pytest suite
 ```
 
-To add a module, append a `ModuleSpec` to `MODULES` in `lythos/app.py`; if the module
-provides `state()`, `apply_state()`, `set_language()`, `apply_theme()` and
-`shutdown()`, the shell handles the rest.
+Forms are generated from `forms.py`: a field's key, label, unit, range and default are
+written once, in Python, and the page renders whatever the server sends. There is no
+second copy of the labels in JavaScript and nothing to keep in step by hand — switching
+language simply re-fetches the schema.
 
-Translations are written inline rather than kept in a key catalogue:
-`T("Şev yüksekliği", "Slope height")` returns the string for the current language, so
-there is no key bookkeeping and no such thing as a missing key. The computation cores
-use it too, which is why they stay free of any Qt dependency while still producing
-localized result texts.
+## Background
 
-## Merge notes
+Lythos Kinematic began as two desktop programs, **SlopeKinematics** (kinematics and
+probability, PyQt5) and **Kinematix** (limit equilibrium, bolting and reporting,
+PySide6). Merging them required three changes worth recording:
 
-Two technical changes were required by the merge:
+1. **One interface.** Two Qt bindings cannot share a process, and a desktop toolkit needs
+   a display. Both interfaces were replaced by this browser-driven one, which also brought
+   the two programs' workflows together behind a single set of inputs.
+2. **mplstereonet removed.** Stereonet drawing now comes from one shared implementation in
+   `stereonet.py` (equal-area/equal-angle projection, great and small circles, pole density
+   via the Kamb counting cone). Both modules plot on exactly the same geometry, and a
+   dependency that fails to build on current Python versions is gone.
+3. **One reporting path.** Screening reports used to be printed through Qt; everything now
+   goes through the same reportlab template as the limit-equilibrium report, so both
+   modules produce the same document, and no display is needed to make a PDF.
 
-1. **One Qt binding.** SlopeKinematics used PyQt5, Kinematix used PySide6, and two Qt
-   builds cannot live in one process. The screening UI was ported to PySide6.
-2. **mplstereonet removed.** Stereonet drawing now comes from a single shared
-   implementation in `lythos/stereonet.py` (equal-area/equal-angle projection, great
-   and small circles, pole density via the Kamb counting cone). Both modules therefore
-   plot on exactly the same geometry, and a dependency that fails to build on current
-   Python versions is gone.
-
-While unifying the projection, **a radius normalisation bug in the equal-area
-projection was fixed**: horizontal lines (plunge = 0) landed at 70.7 % of the radius
-instead of on the primitive circle, so all data was squeezed into the inner part of
-the net. The fix is pinned by `tests/test_stereonet.py`.
+While unifying the projection, **a radius normalisation bug in the equal-area projection
+was fixed**: horizontal lines (plunge = 0) landed at 70.7 % of the radius instead of on
+the primitive circle, so all data was squeezed into the inner part of the net. The fix is
+pinned by `tests/test_stereonet.py`.
 
 ## Validation
 
-The computation cores are pinned against closed-form solutions with pytest:
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+The cores are pinned against closed-form solutions:
 
 - **wedge** — matches the Hoek & Bray closed-form short solution exactly
   (dry 1.696 / flooded 1.065)
 - **planar** — c = 0, dry: tanφ/tanψp
 - **toppling** — Wyllie & Mah Chapter 9 example (block heights, failure modes,
   limit-equilibrium φ ≈ 38°)
-- **kinematics** — the intersection line is cross-checked against the independent
-  vector implementation in the limit-equilibrium core; with zero uncertainty the
-  Monte Carlo result must reduce to the deterministic 0/100 answer
-- **stereonet** — projection radii are checked against the analytical Schmidt/Wulff
-  values, and poles against being perpendicular to the dip vector
-- **i18n** — every summary switches language, the fixed-width label column stays
-  aligned in both, the numbers never change, and internal keys (such as the block
-  failure mode used for plot colours) are never translated
-
-```bash
-pip install -r requirements-dev.txt
-pytest
-```
-
-## Single-file executable (optional)
-
-```bash
-pip install pyinstaller
-pyinstaller --noconfirm --windowed --name "Lythos Suite" --collect-all reportlab lythos_suite.py
-```
-
-On Windows the report uses Arial (`C:\Windows\Fonts`) for Turkish characters; on
-Linux, DejaVu Sans.
+- **kinematics** — the intersection line is cross-checked against the independent vector
+  implementation in the limit-equilibrium core; with zero uncertainty the Monte Carlo
+  result must reduce to the deterministic 0/100 answer
+- **stereonet** — projection radii against the analytical Schmidt/Wulff values, poles
+  against being perpendicular to the dip vector
+- **i18n** — every summary follows the language, the fixed-width label column stays
+  aligned in both, the numbers never change, and internal keys are never translated
+- **web** — the schema covers every field, the session's analyses reproduce the validated
+  results, background jobs finish without deadlocking the state poll, and the HTTP routes
+  return PNG figures, PDF reports and plain error messages rather than stack traces
 
 ## License
 
-MIT — see [LICENSE](LICENSE). PySide6 is LGPL; no additional license is required for
-in-house distribution.
-
-## Troubleshooting (Windows)
-
-**`ImportError: DLL load failed while importing QtCore`** → two different Qt installs
-loaded at once, or mismatched PySide6/shiboken6 versions.
-
-1. Diagnose: `python check_env.py` (PySide6 and shiboken6 versions must match;
-   PyQt5/PyQt6 present is a common conflict source).
-2. Clean reinstall: `pip uninstall -y PySide6 PySide6-Essentials PySide6-Addons shiboken6`
-   → `pip install PySide6`
-3. Most robust: a separate virtual environment:
-   ```
-   python -m venv venv
-   venv\Scripts\activate
-   pip install -r requirements.txt
-   python lythos_suite.py
-   ```
-4. If using Anaconda: `conda create -n lythos python=3.11` → `conda activate lythos`
-   → `pip install -r requirements.txt`.
-   (Avoid mixing the PyQt5/qt packages in the Anaconda base environment with
-   pip-installed PySide6.)
-5. If it still fails, install the Microsoft Visual C++ 2015–2022 Redistributable (x64).
+MIT — see [LICENSE](LICENSE).

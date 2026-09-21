@@ -1,75 +1,89 @@
 [English](README.md) | **Türkçe**
 
-# Lythos Suite v1.0
+# Lythos Kinematic
 
-Geoteknik analiz uygulama takımı. İlk modülü **Lythos Kinematic**, kaya şevi
-kinematiği ve stabilitesini tek bir iş akışında birleştirir:
+Tarayıcıdan sürülen kaya şevi kinematiği ve stabilitesi. Tek iş akışında iki adım:
 
-1. **Kinematik Tarama** — Markland testi, stereonet ve Monte Carlo olasılık analizi
-   ile *hangi yenilme mekanizmasının mümkün olduğunu* belirler.
-2. **Limit Denge** — kinematik olarak kritik bulunan mekanizma için *güvenlik
-   sayısını, gerekli desteği ve bulon tasarımını* hesaplar.
+1. **Kinematik tarama** — stereonet üzerinde Markland testi, kutup yoğunluğu ve Monte
+   Carlo yenilme olasılığı ile *hangi yenilme mekanizmasının mümkün olduğu* belirlenir.
+2. **Limit denge** — kritik bulunan mekanizma için *güvenlik sayısı, gerekli destek ve
+   bulon tasarımı* hesaplanır.
 
-İki adım arasında canlı bir köprü vardır: taramada bulunan en kritik süreksizlik
-veya kesişim, tek tuşla limit denge girdilerine aktarılır.
-Uygulamanın tamamı — her iki modül, tüm sonuç metinleri, grafik etiketleri ve PDF
-raporu — **Türkçe ve İngilizce** olarak çift dillidir; dil araç çubuğundan anında
-değiştirilir.
+İki adım arasında canlı bir köprü vardır: taramada bulunan en kritik süreksizlik veya
+kesişim, tek tuşla limit denge girdilerine yazılır. Uygulamanın tamamı — her etiket,
+sonuç metni, grafik ve PDF raporu — **Türkçe ve İngilizce** olarak çift dillidir; dil
+çalışırken değiştirilir.
 
-> Bu uygulama, daha önce ayrı iki program olan **SlopeKinematics** (kinematik +
-> olasılık) ve **Kinematix** (limit denge + bulon + rapor) projelerinin
-> birleştirilmiş hâlidir. Ayrıntılar için [Birleştirme notları](#birleştirme-notları).
+Arayüz, kendi makinenizde çalışan küçük bir HTTP sunucusudur ve tarayıcıdan sürülür. Bu
+seçim programı uzak oturumda ya da kapsayıcı içinde de kullanılabilir kılar (masaüstü
+araç takımının isteyeceği bir ekran gerekmez) ve standart kütüphane dışında hiçbir
+bağımlılık getirmez.
+
+> Bu program [LythosFEA](https://github.com/hdaltuntas/lythos) ile aynı mimariyi izler.
+> Daha önce ayrı iki masaüstü programı olan **SlopeKinematics** ve **Kinematix**
+> projelerinin birleşimidir; bkz. [Geçmiş](#geçmiş).
 
 ## Ekran görüntüleri
 
-| Kinematik tarama (açık tema) | Limit denge (koyu tema) |
+| Kinematik tarama | Bulon aralık × boy matrisi |
 |---|---|
-| ![Kinematik tarama](assets/screenshot_screening.png) | ![Limit denge](assets/screenshot_equilibrium_dark.png) |
+| ![Kinematik tarama](assets/screening.png) | ![Bulon matrisi](assets/bolts.png) |
 
-| Olasılık analizi raporu | İngilizce arayüz |
-|---|---|
-| ![Olasılık analizi](assets/screenshot_probability.png) | ![İngilizce arayüz](assets/screenshot_equilibrium_en.png) |
+| Olasılık analizi | Kama analizi | İngilizce arayüz, koyu tema |
+|---|---|---|
+| ![Olasılık](assets/probability.png) | ![Kama](assets/wedge.png) | ![Koyu tema](assets/english_dark.png) |
 
 ## Kurulum ve çalıştırma
 
 ```bash
-pip install -r requirements.txt
-python lythos_suite.py          # veya:  python -m lythos
+pip install lythoskinematic
+lythos-kinematic                 # arayüzü tarayıcıda açar
 ```
 
-Python 3.9+ gerekir. Arayüz PySide6 (LGPL) ile yazılmıştır; `mplstereonet` ve
-`PyQt5` artık **gerekmez** (aşağıya bakınız).
+Klondan, bilimsel yığın dışında hiçbir şey kurmadan:
 
-## Modül: Lythos Kinematic
+```bash
+pip install numpy scipy matplotlib reportlab
+python main.py
+```
 
-### 1 · Kinematik Tarama
+Python 3.10+ gerekir.
+
+## Komut satırı
+
+```bash
+lythos-kinematic                          # web arayüzü (varsayılan)
+lythos-kinematic web --port 9000 --lang EN --no-browser
+lythos-kinematic example -o girdi.json    # başlangıç girdi dosyası
+lythos-kinematic screen girdi.json -o tarama.pdf
+lythos-kinematic run girdi.json --mode wedge -o kama.pdf
+```
+
+`screen` ve `run`, arayüzün kaydettiği JSON'u okur; tarayıcıda kurulan bir vaka
+gözetimsiz olarak yeniden çalıştırılabilir.
+
+## Ne hesaplar
+
+### Kinematik tarama
 - **Kinematik testler:** düzlemsel kayma, kama kayması (Markland), eğilme-devrilme
   (Goodman & Bray)
-- **Stereonet:** eşit alan (Schmidt) alt yarımküre projeksiyonu, kutup yoğunluğu
-  konturu (Kamb sayım konisi), kritik bölge taraması, sürtünme / kayma limit konisi
-- **Monte Carlo:** eklem yönelim belirsizliğini (dip ve dip yönü std. sapması)
-  hesaba katarak toplam ve bileşen bazlı Yenilme Olasılığı (PoF); arka planda
-  çalışır, arayüz donmaz
-- **PDF rapor:** kinematik kontrol + olasılıksal analiz + stereonet tek dosyada
+- **Stereonet:** eşit alan (Schmidt) alt yarımküre projeksiyonu, kutup yoğunluğu konturu
+  (Kamb sayım konisi), kritik bölge taraması, sürtünme / kayma limit konisi
+- **Monte Carlo:** süreksizlik yönelim belirsizliğini hesaba katarak toplam ve bileşen
+  bazlı yenilme olasılığı; arka planda çalışır, sayfa yanıt vermeye devam eder
+- **PDF rapor:** kontroller, olasılıklar ve stereonet tek dosyada
 
-### 2 · Limit Denge
-- **Kama (Swedge):** tetrahedral kama geometrisi, Hoek & Bray vektörel limit denge,
-  3B görselleştirme, stereonet
+### Limit denge
+- **Kama (Swedge):** tetrahedral kama geometrisi, Hoek & Bray vektörel limit denge, 3B
+  görünüm ve stereonet
 - **Düzlemsel (RocPlane):** çekme çatlağı, su basıncı, sismik yük, 2B kesit
 - **Devrilme (RocTopple):** Goodman & Bray blok devrilmesi, su + sismik + topuk ankrajı
-- **Destek tasarımı:** hedef FS için gerekli destek kuvveti, bulon karelaj × boy
-  öneri matrisi, seçilen tasarım için kapasite/FS kontrolü
-- **PDF rapor:** proje bilgileri, girdi tablosu, şekiller, kuvvet dengesi tabloları
+- **Destek tasarımı:** hedef FS için gerekli kuvvet, tıklanabilir bulon aralık × boy
+  matrisi ve seçtiğiniz tasarım için kapasite/FS kontrolü
+- **PDF rapor:** proje bilgileri, girdi tabloları, şekiller, kuvvet dengesi tabloları
 
-### Dil
-Araç çubuğundaki dil seçicisi tüm uygulamayı Türkçe ve İngilizce arasında değiştirir:
-menüler, girdi formları, sonuç metinleri, uyarılar, hata iletileri, grafik etiketleri
-ve PDF raporu. Dil değişimi panelleri girdileri koruyarak yeniden kurar ve hiçbir
-sayısal sonucu değiştirmez — yalnızca metni.
-
-### Köprü: taramadan limit dengeye
-Tarama panelindeki **"→ Kritik sonucu Limit Dengeye aktar"** düğmesi, en kritik
-bileşeni limit denge girdilerine yazar ve analizi çalıştırır:
+### Köprü
+**"→ Kritik sonucu limit dengeye aktar"** en kritik bileşeni aktarır:
 
 | Tarama modu | Aktarılan girdiler |
 |---|---|
@@ -77,118 +91,84 @@ bileşeni limit denge girdilerine yazar ve analizi çalıştırır:
 | Kama | Eklem 1 ve Eklem 2 dip/dip dir, şev yüzü dip/dip dir, φ |
 | Devrilme | süreksizlik eğimi ψd, şev yüzü ψf, φ |
 
-## Kısayollar
-
-Limit denge panelinde: `F5` Analiz · `F6` Gerekli destek · `F7` Bulon önerisi ·
-`F8` Bulon kontrol · `Ctrl+P` PDF · `Ctrl+S` / `Ctrl+O` girdileri kaydet / yükle.
-Suite genelinde: `F1` Hakkında.
-
 ## Paket düzeni
 
 ```
-lythos_suite.py            giriş noktası
-lythos/
-  app.py                   Lythos Suite kabuğu (modül sekmeleri, tema, dil, kalıcılık)
-  theme.py                 ortak açık/koyu tema (QSS + matplotlib paleti)
+main.py                    klondan, kurmadan çalıştırmak için
+lythoskinematic/
+  cli.py                   komut satırı (web · screen · run · example)
   i18n.py                  dil anahtarı; çift dilli metin yardımcısı T("tr", "en")
-  stereonet.py             ortak alt yarımküre stereonet projeksiyonu (dış bağımlılıksız)
-  kinematics/              kinematik tarama çekirdeği
-    engine.py              Markland kriterleri + Monte Carlo (Qt'den bağımsız)
+  forms.py                 girdi şeması ve okuyucuları — alan başına tek tanım
+  stereonet.py             ortak alt yarımküre projeksiyonu (dış bağımlılıksız)
+  render.py                PNG figürler; tarayıcı ve rapor aynısını kullanır
+  theme.py                 grafik paleti
+  kinematics/              tarama çekirdeği — arayüzden bağımsız
+    engine.py              Markland kriterleri + Monte Carlo
     plots.py               tarama stereoneti
-    htmlreport.py          HTML rapor gövdeleri (ekran + PDF ortak)
+    htmlreport.py          HTML rapor gövdeleri
+    report.py              tarama PDF raporu
     i18n.py                TR/EN metinler
-  rockslope/               limit denge çekirdeği (Qt'den bağımsız)
-    core.py wedge.py planar.py toppling.py bolts.py report.py style.py
-    text.py                ortak çift dilli etiketler (özet hizalaması, blok modları)
-  ui/                      PySide6 arayüzü
-    screening.py           kinematik tarama paneli
-    equilibrium.py         limit denge paneli
-    kinematic.py           Lythos Kinematic modülü (iki panel + köprü)
-    widgets.py qt.py       ortak bileşenler, Qt bağlaması
-tests/                     pytest doğrulama paketi
+  rockslope/               limit denge çekirdeği — arayüzden bağımsız
+    core.py wedge.py planar.py toppling.py bolts.py report.py style.py text.py
+  web/
+    server.py              HTTP yönlendirmeleri (yalnızca standart kütüphane)
+    session.py             tek çalışma oturumu: analizler, figürler, raporlar
+    strings.py             sayfaya gönderilen arayüz metinleri
+    static/                index.html · style.css · app.js
+tests/                     pytest paketi
 ```
 
-Yeni bir modül eklemek için `lythos/app.py` içindeki `MODULES` listesine bir
-`ModuleSpec` eklemek yeterlidir; modül `state()`, `apply_state()`, `set_language()`,
-`apply_theme()` ve `shutdown()` yöntemlerini sağlarsa kabuk gerisini halleder.
+Formlar `forms.py` şemasından üretilir: bir alanın anahtarı, etiketi, birimi, aralığı ve
+varsayılanı Python tarafında bir kez yazılır; sayfa sunucunun gönderdiğini çizer.
+JavaScript'te etiketlerin ikinci bir kopyası ve elle eşlenecek bir şey yoktur — dil
+değişince şema yeniden alınır.
 
-Çeviriler bir anahtar defterinde değil, kullanıldıkları yerde durur:
-`T("Şev yüksekliği", "Slope height")` seçili dildeki metni döndürür. Böylece anahtar
-takibi gerekmez ve "eksik anahtar" diye bir durum oluşmaz. Hesap çekirdekleri de bu
-yardımcıyı kullanır; Qt'den bağımsız kalırken dile uygun sonuç metni üretebilirler.
+## Geçmiş
 
-## Birleştirme notları
+Lythos Kinematic iki masaüstü programı olarak başladı: **SlopeKinematics** (kinematik ve
+olasılık, PyQt5) ve **Kinematix** (limit denge, bulon ve rapor, PySide6). Birleştirme üç
+değişiklik gerektirdi:
 
-Birleştirme sırasında iki teknik düzeltme yapıldı:
+1. **Tek arayüz.** İki Qt bağlaması aynı işlemi paylaşamaz ve masaüstü araç takımı bir
+   ekran ister. Her iki arayüz de tarayıcıdan sürülen bu arayüzle değiştirildi; bu aynı
+   zamanda iki programın iş akışını tek bir girdi kümesi arkasında birleştirdi.
+2. **mplstereonet kaldırıldı.** Stereonet çizimi artık `stereonet.py` içindeki tek ortak
+   uygulamadan gelir (eşit alan/eşit açı projeksiyonu, büyük ve küçük daireler, Kamb
+   sayım konisiyle kutup yoğunluğu). İki modül birebir aynı geometriyi kullanır ve güncel
+   Python sürümlerinde kurulumu bozulan bir bağımlılık ortadan kalkar.
+3. **Tek rapor yolu.** Tarama raporu eskiden Qt'nin yazıcısıyla basılıyordu; artık her
+   şey limit denge raporuyla aynı reportlab şablonundan geçer. İki modül aynı belgeyi
+   üretir ve PDF için ekrana gerek kalmaz.
 
-1. **Tek Qt bağlaması.** SlopeKinematics PyQt5, Kinematix PySide6 kullanıyordu; iki
-   Qt aynı işlemde yaşayamaz. Kinematik tarama arayüzü PySide6'ya taşındı.
-2. **mplstereonet kaldırıldı.** Stereonet çizimi artık `lythos/stereonet.py`
-   içindeki tek ortak uygulamadan gelir (eşit alan/eşit açı projeksiyonu, büyük ve
-   küçük daireler, Kamb sayım konisiyle kutup yoğunluğu). Böylece her iki modülün
-   stereoneti birebir aynı geometriyi kullanır ve güncel Python sürümlerinde
-   kurulumu bozulan bir bağımlılık ortadan kalkar.
-
-Ayrıca **eşit alan projeksiyonunda bir yarıçap normalizasyon hatası düzeltildi**:
-yatay çizgiler (plunge = 0) dış çember yerine yarıçapın %70,7'sine düşüyordu, yani
-tüm veri ağın iç kısmına sıkışıyordu. Düzeltme `tests/test_stereonet.py` ile
-sabitlendi.
+Projeksiyon birleştirilirken **eşit alan projeksiyonunda bir yarıçap normalizasyon hatası
+düzeltildi**: yatay çizgiler (plunge = 0) dış çember yerine yarıçapın %70,7'sine
+düşüyordu, yani tüm veri ağın iç kısmına sıkışıyordu. Düzeltme
+`tests/test_stereonet.py` ile sabitlendi.
 
 ## Doğrulama
 
-Çekirdek modüller kapalı-form çözümlere karşı pytest ile sabitlenmiştir:
-
-- **kama** — Hoek & Bray kısa çözümüyle birebir (kuru 1.696 / su dolu 1.065)
-- **düzlemsel** — c = 0, kuru: tanφ/tanψp
-- **devrilme** — Wyllie & Mah 9. bölüm örneği (blok yükseklikleri, göçme modları,
-  limit denge φ ≈ 38°)
-- **kinematik** — kesişim çizgisi, limit denge çekirdeğinin bağımsız vektör
-  uygulamasına karşı çapraz doğrulanır; Monte Carlo, belirsizlik sıfırken
-  deterministik sonucun 0/100 karşılığını vermelidir
-- **stereonet** — projeksiyon yarıçapları analitik Schmidt/Wulff değerlerine,
-  kutuplar eğim vektörüne dik olma koşuluna karşı sınanır
-- **dil** — her özet dili izler, sabit genişlikli etiket sütunu iki dilde de hizalı
-  kalır, sayısal sonuçlar değişmez ve iç anahtarlar (grafik renklerinde kullanılan
-  blok göçme modu gibi) hiçbir dilde çevrilmez
-
 ```bash
-pip install -r requirements-dev.txt
+pip install -e ".[dev]"
 pytest
 ```
 
-## Tek dosya çalıştırılabilir (isteğe bağlı)
+Çekirdekler kapalı-form çözümlere karşı sabitlenmiştir:
 
-```bash
-pip install pyinstaller
-pyinstaller --noconfirm --windowed --name "Lythos Suite" --collect-all reportlab lythos_suite.py
-```
-
-Windows'ta rapor Türkçe karakterler için Arial (`C:\Windows\Fonts`), Linux'ta
-DejaVu Sans kullanır.
+- **kama** — Hoek & Bray kısa çözümüyle birebir (kuru 1.696 / su dolu 1.065)
+- **düzlemsel** — c = 0, kuru: tanφ/tanψp
+- **devrilme** — Wyllie & Mah 9. bölüm örneği (blok yükseklikleri, göçme modları, limit
+  denge φ ≈ 38°)
+- **kinematik** — kesişim çizgisi, limit denge çekirdeğinin bağımsız vektör uygulamasına
+  karşı çapraz doğrulanır; Monte Carlo, belirsizlik sıfırken deterministik sonucun 0/100
+  karşılığını vermelidir
+- **stereonet** — projeksiyon yarıçapları analitik Schmidt/Wulff değerlerine, kutuplar
+  eğim vektörüne dik olma koşuluna karşı sınanır
+- **dil** — her özet dili izler, sabit genişlikli etiket sütunu iki dilde de hizalı kalır,
+  sayısal sonuçlar değişmez ve iç anahtarlar hiçbir dilde çevrilmez
+- **web** — şema tüm alanları kapsar, oturumun analizleri doğrulanmış sonuçları üretir,
+  arka plan işleri durum yoklamasını kilitlemeden biter ve HTTP yönlendirmeleri yığın
+  izi yerine PNG figür, PDF rapor ve sade hata iletisi döndürür
 
 ## Lisans
 
-MIT — bkz. [LICENSE](LICENSE). PySide6 LGPL'dir; kurum içi dağıtım için ek lisans
-gerekmez.
-
-## Sorun giderme (Windows)
-
-**`ImportError: DLL load failed while importing QtCore`** → aynı anda iki farklı Qt
-kurulumu yüklenmiş ya da PySide6/shiboken6 sürümleri uyuşmuyor.
-
-1. Teşhis: `python check_env.py` (PySide6 ve shiboken6 sürümleri aynı olmalı;
-   PyQt5/PyQt6'nın kurulu olması sık görülen bir çakışma kaynağıdır).
-2. Temiz kurulum: `pip uninstall -y PySide6 PySide6-Essentials PySide6-Addons shiboken6`
-   → `pip install PySide6`
-3. En sağlamı, ayrı bir sanal ortam:
-   ```
-   python -m venv venv
-   venv\Scripts\activate
-   pip install -r requirements.txt
-   python lythos_suite.py
-   ```
-4. Anaconda kullanıyorsanız: `conda create -n lythos python=3.11` →
-   `conda activate lythos` → `pip install -r requirements.txt`.
-   (Anaconda temel ortamındaki PyQt5/qt paketleriyle pip ile kurulan PySide6'yı
-   karıştırmayın.)
-5. Hâlâ başarısızsa Microsoft Visual C++ 2015–2022 Redistributable (x64) kurun.
+MIT — bkz. [LICENSE](LICENSE).

@@ -12,6 +12,7 @@ from typing import Optional, Sequence, Tuple
 
 import numpy as np
 
+from ..i18n import pct
 from .engine import MonteCarloResult, ScreeningResult, WEDGE
 
 # Rapor renk paleti (Lythos kurumsal renkleri)
@@ -125,7 +126,7 @@ def probabilistic_report(t: dict, mc: MonteCarloResult, labels: Sequence[str], m
     body += (f"<br><table width='100%' cellpadding='12' cellspacing='0'><tr>"
              f"<td bgcolor='{bg}' width='40%' align='center'>"
              f"<span style='font-size:9pt; color:#555;'>{t['prob_pof']}</span><br>"
-             f"<span style='font-size:26pt; font-weight:bold; color:{col};'>%{mc.pof:.2f}</span></td>"
+             f"<span style='font-size:26pt; font-weight:bold; color:{col};'>{pct(mc.pof)}</span></td>"
              f"<td bgcolor='{C_GREY}'>{t['prob_trials']}: <b>{mc.n_trials:,}</b><br>"
              f"{t['prob_fails']}: <b>{mc.n_fail:,}</b><br><br>{bar(mc.pof, col)}</td></tr></table>")
 
@@ -138,7 +139,7 @@ def probabilistic_report(t: dict, mc: MonteCarloResult, labels: Sequence[str], m
     rows = []
     for name, p in entries:
         pc = C_CRIT if p >= 15 else (C_MOD if p >= 5 else C_SAFE)
-        rows.append(((name, f"<b>%{p:.2f}</b>", bar(p, pc)), None))
+        rows.append(((name, f"<b>{pct(p)}</b>", bar(p, pc)), None))
     body += table([t["col_pair"] if mode == WEDGE else t["col_label"], t["col_pof"], ""], rows,
                   ["left", "center", "left"])
 

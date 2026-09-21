@@ -21,6 +21,6 @@ from .planar import PlanarInput, PlanarResult, planar_analyze, planar_required_s
 from .toppling import TopplingInput, TopplingResult, toppling_analyze, toppling_required_support, plot_toppling
 from .bolts import (BoltSpec, BoltPattern, BoltCheck, bolt_pattern_planar, bolt_pattern_wedge,
                     bolt_check_planar, bolt_check_wedge, bolt_options_table, STANDARD_LENGTHS)
-from .report import Report, METHOD_TEXT
+from .report import Report, METHOD, METHOD_TEXT, PROJECT_FIELDS, PROJECT_LABEL
 
 __version__ = "1.0.0"

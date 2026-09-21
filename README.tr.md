@@ -12,6 +12,9 @@ kinematiği ve stabilitesini tek bir iş akışında birleştirir:
 
 İki adım arasında canlı bir köprü vardır: taramada bulunan en kritik süreksizlik
 veya kesişim, tek tuşla limit denge girdilerine aktarılır.
+Uygulamanın tamamı — her iki modül, tüm sonuç metinleri, grafik etiketleri ve PDF
+raporu — **Türkçe ve İngilizce** olarak çift dillidir; dil araç çubuğundan anında
+değiştirilir.
 
 > Bu uygulama, daha önce ayrı iki program olan **SlopeKinematics** (kinematik +
 > olasılık) ve **Kinematix** (limit denge + bulon + rapor) projelerinin
@@ -23,9 +26,9 @@ veya kesişim, tek tuşla limit denge girdilerine aktarılır.
 |---|---|
 | ![Kinematik tarama](assets/screenshot_screening.png) | ![Limit denge](assets/screenshot_equilibrium_dark.png) |
 
-| Olasılık analizi raporu |
-|---|
-| ![Olasılık analizi](assets/screenshot_probability.png) |
+| Olasılık analizi raporu | İngilizce arayüz |
+|---|---|
+| ![Olasılık analizi](assets/screenshot_probability.png) | ![İngilizce arayüz](assets/screenshot_equilibrium_en.png) |
 
 ## Kurulum ve çalıştırma
 
@@ -48,7 +51,6 @@ Python 3.9+ gerekir. Arayüz PySide6 (LGPL) ile yazılmıştır; `mplstereonet` 
   hesaba katarak toplam ve bileşen bazlı Yenilme Olasılığı (PoF); arka planda
   çalışır, arayüz donmaz
 - **PDF rapor:** kinematik kontrol + olasılıksal analiz + stereonet tek dosyada
-- **Türkçe / İngilizce** arayüz
 
 ### 2 · Limit Denge
 - **Kama (Swedge):** tetrahedral kama geometrisi, Hoek & Bray vektörel limit denge,
@@ -58,6 +60,12 @@ Python 3.9+ gerekir. Arayüz PySide6 (LGPL) ile yazılmıştır; `mplstereonet` 
 - **Destek tasarımı:** hedef FS için gerekli destek kuvveti, bulon karelaj × boy
   öneri matrisi, seçilen tasarım için kapasite/FS kontrolü
 - **PDF rapor:** proje bilgileri, girdi tablosu, şekiller, kuvvet dengesi tabloları
+
+### Dil
+Araç çubuğundaki dil seçicisi tüm uygulamayı Türkçe ve İngilizce arasında değiştirir:
+menüler, girdi formları, sonuç metinleri, uyarılar, hata iletileri, grafik etiketleri
+ve PDF raporu. Dil değişimi panelleri girdileri koruyarak yeniden kurar ve hiçbir
+sayısal sonucu değiştirmez — yalnızca metni.
 
 ### Köprü: taramadan limit dengeye
 Tarama panelindeki **"→ Kritik sonucu Limit Dengeye aktar"** düğmesi, en kritik
@@ -82,6 +90,7 @@ lythos_suite.py            giriş noktası
 lythos/
   app.py                   Lythos Suite kabuğu (modül sekmeleri, tema, dil, kalıcılık)
   theme.py                 ortak açık/koyu tema (QSS + matplotlib paleti)
+  i18n.py                  dil anahtarı; çift dilli metin yardımcısı T("tr", "en")
   stereonet.py             ortak alt yarımküre stereonet projeksiyonu (dış bağımlılıksız)
   kinematics/              kinematik tarama çekirdeği
     engine.py              Markland kriterleri + Monte Carlo (Qt'den bağımsız)
@@ -90,6 +99,7 @@ lythos/
     i18n.py                TR/EN metinler
   rockslope/               limit denge çekirdeği (Qt'den bağımsız)
     core.py wedge.py planar.py toppling.py bolts.py report.py style.py
+    text.py                ortak çift dilli etiketler (özet hizalaması, blok modları)
   ui/                      PySide6 arayüzü
     screening.py           kinematik tarama paneli
     equilibrium.py         limit denge paneli
@@ -101,6 +111,11 @@ tests/                     pytest doğrulama paketi
 Yeni bir modül eklemek için `lythos/app.py` içindeki `MODULES` listesine bir
 `ModuleSpec` eklemek yeterlidir; modül `state()`, `apply_state()`, `set_language()`,
 `apply_theme()` ve `shutdown()` yöntemlerini sağlarsa kabuk gerisini halleder.
+
+Çeviriler bir anahtar defterinde değil, kullanıldıkları yerde durur:
+`T("Şev yüksekliği", "Slope height")` seçili dildeki metni döndürür. Böylece anahtar
+takibi gerekmez ve "eksik anahtar" diye bir durum oluşmaz. Hesap çekirdekleri de bu
+yardımcıyı kullanır; Qt'den bağımsız kalırken dile uygun sonuç metni üretebilirler.
 
 ## Birleştirme notları
 
@@ -132,6 +147,9 @@ sabitlendi.
   deterministik sonucun 0/100 karşılığını vermelidir
 - **stereonet** — projeksiyon yarıçapları analitik Schmidt/Wulff değerlerine,
   kutuplar eğim vektörüne dik olma koşuluna karşı sınanır
+- **dil** — her özet dili izler, sabit genişlikli etiket sütunu iki dilde de hizalı
+  kalır, sayısal sonuçlar değişmez ve iç anahtarlar (grafik renklerinde kullanılan
+  blok göçme modu gibi) hiçbir dilde çevrilmez
 
 ```bash
 pip install -r requirements-dev.txt

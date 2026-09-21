@@ -9,6 +9,8 @@ from scipy.spatial import ConvexHull
 
 from .core import *
 from . import style
+from ..i18n import T as _tr
+from .text import ACTIVE, LABEL_WIDTH, NONE_TEXT, PASSIVE, WARNING_PREFIX
 from .. import stereonet as _st
 
 #  Girdi veri yapıları
@@ -137,12 +139,16 @@ def build_wedge(inp: WedgeInput) -> WedgeGeometry:
             (na_, va), (nb_, vb) = items[a], items[b]
             ang = np.degrees(np.arccos(np.clip(abs(va @ vb), 0, 1)))
             if ang < 0.5:
-                raise ValueError(
+                raise ValueError(_tr(
                     f"{na_} ile {nb_} paralel (aralarındaki açı {ang:.2f}°) — kama oluşmaz.\n"
                     f"İki eklem birbirini VE şev yüzünü kesmeli; şev yüzü ile üst şev farklı eğimde olmalı.\n"
-                    f"Eklem şev yüzüne paralelse bu bir düzlemsel (planar) kayma problemidir, kama analizi değil.")
+                    f"Eklem şev yüzüne paralelse bu bir düzlemsel (planar) kayma problemidir, kama analizi değil.",
+                    f"{na_} and {nb_} are parallel (angle between them {ang:.2f}°) — no wedge forms.\n"
+                    f"The two joints must intersect each other AND the slope face; the face and the upper "
+                    f"slope must have different dips.\n"
+                    f"If a joint is parallel to the face this is a planar sliding problem, not a wedge."))
     if H <= 0:
-        raise ValueError("Şev yüksekliği pozitif olmalı.")
+        raise ValueError(_tr("Şev yüksekliği pozitif olmalı.", "The slope height must be positive."))
 
     # Tepe (crest) çizgisi orijin O=(0,0,H)'den geçer; A (kama ucu) şev yüzünde z=0
     O = np.array([0.0, 0.0, H])
@@ -151,12 +157,13 @@ def build_wedge(inp: WedgeInput) -> WedgeGeometry:
 
     crest_dir = np.cross(nF, nU)
     if np.linalg.norm(crest_dir) < 1e-9:
-        raise ValueError("Şev yüzü ve üst şev paralel — tepe çizgisi tanımsız.")
+        raise ValueError(_tr("Şev yüzü ve üst şev paralel — tepe çizgisi tanımsız.",
+                           "The slope face and the upper slope are parallel — the crest line is undefined."))
 
     # Kesişim çizgisi (J1∩J2)
     i = np.cross(n1, n2)
     if np.linalg.norm(i) < 1e-9:
-        raise ValueError("Eklem düzlemleri paralel.")
+        raise ValueError(_tr("Eklem düzlemleri paralel.", "The joint planes are parallel."))
     i = unit(i)
     if i[2] > 0:
         i = -i   # aşağı yönlü
@@ -164,38 +171,57 @@ def build_wedge(inp: WedgeInput) -> WedgeGeometry:
     # Kesişim çizgisi şev yüzünden dışarı (boşluğa) bakmalı: günışığı koşulu
     tr_i, pl_i = vector_to_trend_plunge(i)
     if pl_i >= inp.slope_face.dip - 1e-6:
-        raise ValueError(
+        raise ValueError(_tr(
             f"Kesişim çizgisinin plunge'ı ({pl_i:.0f}°) şev yüzü eğiminden ({inp.slope_face.dip:.0f}°) "
-            f"büyük — çizgi şev yüzünü kesmiyor, kama oluşmaz.")
+            f"büyük — çizgi şev yüzünü kesmiyor, kama oluşmaz.",
+            f"The plunge of the intersection line ({pl_i:.0f}°) exceeds the slope face dip "
+            f"({inp.slope_face.dip:.0f}°) — the line does not cut the face, so no wedge forms."))
 
     if nF @ i <= 1e-9:
-        raise ValueError(
+        raise ValueError(_tr(
             f"Eklem kesişim çizgisi (trend {tr_i:.0f}°, plunge {pl_i:.0f}°) şevin içine doğru dalıyor — "
-            f"şev yüzünde (eğim yönü {inp.slope_face.dipdir:.0f}°) gün ışığına çıkmıyor, kama kayamaz.")
+            f"şev yüzünde (eğim yönü {inp.slope_face.dipdir:.0f}°) gün ışığına çıkmıyor, kama kayamaz.",
+            f"The joint intersection line (trend {tr_i:.0f}°, plunge {pl_i:.0f}°) dips into the slope — "
+            f"it does not daylight on the face (dip direction {inp.slope_face.dipdir:.0f}°), so the wedge "
+            f"cannot slide."))
     def _tri(name, a, pa, b, pb, c, pc):
         try:
             return intersect_3_planes(a, pa, b, pb, c, pc)
         except ValueError:
-            raise ValueError(f"{name} tek noktada kesişmiyor — düzlemlerden ikisinin doğrultusu "
-                             f"(strike) aynı ya da bir düzlem diğer ikisinin kesişim çizgisine paralel. "
-                             f"Eklem doğrultularını şev doğrultusundan farklı verin.")
+            raise ValueError(_tr(
+                f"{name} tek noktada kesişmiyor — düzlemlerden ikisinin doğrultusu "
+                f"(strike) aynı ya da bir düzlem diğer ikisinin kesişim çizgisine paralel. "
+                f"Eklem doğrultularını şev doğrultusundan farklı verin.",
+                f"{name} do not meet at a single point — two of the planes share the same strike, or one "
+                f"plane is parallel to the intersection line of the other two. "
+                f"Give the joints strikes that differ from the slope strike."))
 
-    B = _tri("Eklem 1, şev yüzü ve üst şev", n1, A, nF, O, nU, O)   # J1 ∩ yüz ∩ üst
-    C = _tri("Eklem 2, şev yüzü ve üst şev", n2, A, nF, O, nU, O)   # J2 ∩ yüz ∩ üst
-    D = _tri("Eklem 1, Eklem 2 ve üst şev", n1, A, n2, A, nU, O)    # J1 ∩ J2 ∩ üst
+    B = _tri(_tr("Eklem 1, şev yüzü ve üst şev", "Joint 1, slope face and upper slope"),
+             n1, A, nF, O, nU, O)                                   # J1 ∩ yüz ∩ üst
+    C = _tri(_tr("Eklem 2, şev yüzü ve üst şev", "Joint 2, slope face and upper slope"),
+             n2, A, nF, O, nU, O)                                   # J2 ∩ yüz ∩ üst
+    D = _tri(_tr("Eklem 1, Eklem 2 ve üst şev", "Joint 1, Joint 2 and upper slope"),
+             n1, A, n2, A, nU, O)                                   # J1 ∩ J2 ∩ üst
 
     # --- Kinematik geçerlilik kontrolleri ---
     if nF @ (D - O) > 1e-9:
         tr, pl = vector_to_trend_plunge(i)
-        raise ValueError(f"Kesişim çizgisi (trend {tr:.0f}°, plunge {pl:.0f}°) şev yüzünde gün ışığına "
-                         f"çıkmıyor — kama şev içinde kalıyor, kinematik olarak kayamaz.\n"
-                         f"Kesişim çizgisi şev yüzü eğim yönüne bakmalı ve plunge'ı şev açısından küçük olmalı.")
+        raise ValueError(_tr(
+            f"Kesişim çizgisi (trend {tr:.0f}°, plunge {pl:.0f}°) şev yüzünde gün ışığına "
+            f"çıkmıyor — kama şev içinde kalıyor, kinematik olarak kayamaz.\n"
+            f"Kesişim çizgisi şev yüzü eğim yönüne bakmalı ve plunge'ı şev açısından küçük olmalı.",
+            f"The intersection line (trend {tr:.0f}°, plunge {pl:.0f}°) does not daylight on the slope "
+            f"face — the wedge stays inside the slope and cannot slide kinematically.\n"
+            f"The intersection line must face the slope dip direction and plunge less than the face."))
     if D[2] < A[2]:
-        raise ValueError("Kesişim çizgisi şev yüzünden içeri doğru yükseliyor — kama oluşmuyor.")
+        raise ValueError(_tr("Kesişim çizgisi şev yüzünden içeri doğru yükseliyor — kama oluşmuyor.",
+                           "The intersection line rises into the slope from the face — no wedge forms."))
     G0 = (A + B + C + D) / 4.0
     if n1 @ (G0 - A) < 0 or n2 @ (G0 - A) < 0:
-        raise ValueError("Eklem düzlemleri şev yüzünü kesiyor ama aralarında kalan blok şev dışına "
-                         "çıkmıyor (kama düzlemlerin altında kalıyor) — geometri geçersiz.")
+        raise ValueError(_tr("Eklem düzlemleri şev yüzünü kesiyor ama aralarında kalan blok şev dışına "
+                           "çıkmıyor (kama düzlemlerin altında kalıyor) — geometri geçersiz.",
+                           "The joint planes cut the face but the block between them does not project out "
+                           "of the slope (the wedge lies below the planes) — invalid geometry."))
 
     # --- Boyutlar ve ölçekleme ---
     c_hat = unit(crest_dir)
@@ -212,7 +238,8 @@ def build_wedge(inp: WedgeInput) -> WedgeGeometry:
     lam = 1.0
     if inp.scale_mode != "height":
         if inp.scale_value is None or inp.scale_value <= 0:
-            raise ValueError("Ölçekleme değeri (scale_value) pozitif olmalı.")
+            raise ValueError(_tr("Ölçekleme değeri (scale_value) pozitif olmalı.",
+                               "The scaling value (scale_value) must be positive."))
         sv = inp.scale_value
         if inp.scale_mode == "crest_length":
             lam = sv / crest_len
@@ -223,15 +250,20 @@ def build_wedge(inp: WedgeInput) -> WedgeGeometry:
         elif inp.scale_mode == "weight":
             lam = (sv / (inp.unit_weight * vol0)) ** (1 / 3)
         else:
-            raise ValueError(f"Bilinmeyen ölçekleme modu: {inp.scale_mode}")
+            raise ValueError(_tr(f"Bilinmeyen ölçekleme modu: {inp.scale_mode}",
+                               f"Unknown scaling mode: {inp.scale_mode}"))
         B = A + lam * (B - A); C = A + lam * (C - A); D = A + lam * (D - A)
         O = A + lam * (O - A)
         crest_len, bench = _dims(B, C, D, O)
     slope_h_eff = float(lam * H)
     if crest_len > 20 * slope_h_eff:
-        warnings.append(f"Kama tepe boyunca çok uzun ({crest_len:.0f} m, şev yüksekliğinin "
-                        f"{crest_len / slope_h_eff:.0f} katı): eklem doğrultusu şev yüzüne "
-                        f"neredeyse paralel. Tepe uzunluğu / basamak genişliği ile ölçeklemeyi düşünün.")
+        warnings.append(_tr(
+            f"Kama tepe boyunca çok uzun ({crest_len:.0f} m, şev yüksekliğinin "
+            f"{crest_len / slope_h_eff:.0f} katı): eklem doğrultusu şev yüzüne "
+            f"neredeyse paralel. Tepe uzunluğu / basamak genişliği ile ölçeklemeyi düşünün.",
+            f"The wedge is very long along the crest ({crest_len:.0f} m, "
+            f"{crest_len / slope_h_eff:.0f}× the slope height): the joint strike is nearly parallel to the "
+            f"face. Consider scaling by crest length or bench width."))
 
     verts = {"A": A, "B": B, "C": C, "D": D}
     faces = {"J1": ["A", "B", "D"], "J2": ["A", "C", "D"],
@@ -269,7 +301,9 @@ def build_wedge(inp: WedgeInput) -> WedgeGeometry:
                      "TC": ["E", "F", "G"]}
             tc_used = True
         else:
-            warnings.append("Çekme çatlağı kamayı kesmiyor (mesafe/yönelim uygun değil) — ihmal edildi.")
+            warnings.append(_tr("Çekme çatlağı kamayı kesmiyor (mesafe/yönelim uygun değil) — ihmal edildi.",
+                              "The tension crack does not cut the wedge (distance/orientation unsuitable) — "
+                              "ignored."))
 
     P = np.array(list(verts.values()))
     hull = ConvexHull(P)
@@ -329,41 +363,46 @@ class WedgeResult:
 
     def summary(self) -> str:
         g = self.geometry
+        w = LABEL_WIDTH
         L = []
         L.append("=" * 62)
-        L.append("  KAMA STABİLİTE ANALİZİ  (Hoek & Bray vektörel yöntem)")
+        L.append("  " + _tr("KAMA STABİLİTE ANALİZİ  (Hoek & Bray vektörel yöntem)",
+                          "WEDGE STABILITY ANALYSIS  (Hoek & Bray vector method)"))
         L.append("=" * 62)
-        L.append(f"Kama hacmi            : {self.volume:10.3f} m³")
-        L.append(f"Kama ağırlığı         : {self.weight:10.2f} kN")
-        L.append(f"Kama yüksekliği       : {g.height:10.3f} m")
-        L.append(f"Etkin şev yüksekliği  : {g.slope_height_eff:10.3f} m  (ölçek λ = {g.scale_factor:.3f})")
-        L.append(f"Tepe uzunluğu |BC|    : {g.crest_length:10.3f} m")
-        L.append(f"Basamak genişliği     : {g.bench_width:10.3f} m")
-        L.append(f"Çekme çatlağı         : {'Var' if g.tension_crack_used else 'Yok'}")
-        L.append(f"Kesişim (J1∩J2)       : trend {self.intersection_line[0]:6.1f}°, "
+        L.append(f"{_tr('Kama hacmi', 'Wedge volume'):<{w}}: {self.volume:10.3f} m³")
+        L.append(f"{_tr('Kama ağırlığı', 'Wedge weight'):<{w}}: {self.weight:10.2f} kN")
+        L.append(f"{_tr('Kama yüksekliği', 'Wedge height'):<{w}}: {g.height:10.3f} m")
+        L.append(f"{_tr('Etkin şev yüksekliği', 'Effective slope height'):<{w}}: {g.slope_height_eff:10.3f} m  "
+                 f"({_tr('ölçek', 'scale')} λ = {g.scale_factor:.3f})")
+        L.append(f"{_tr('Tepe uzunluğu |BC|', 'Crest length |BC|'):<{w}}: {g.crest_length:10.3f} m")
+        L.append(f"{_tr('Basamak genişliği', 'Bench width'):<{w}}: {g.bench_width:10.3f} m")
+        L.append(f"{_tr('Çekme çatlağı', 'Tension crack'):<{w}}: "
+                 f"{_tr('Var', 'Yes') if g.tension_crack_used else NONE_TEXT()}")
+        L.append(f"{_tr('Kesişim (J1∩J2)', 'Intersection (J1∩J2)'):<{w}}: trend {self.intersection_line[0]:6.1f}°, "
                  f"plunge {self.intersection_line[1]:5.1f}°")
         L.append("-" * 62)
         for k, a in self.areas.items():
-            L.append(f"Alan {k:<6}           : {a:10.3f} m²")
+            L.append(f"{_tr('Alan', 'Area') + ' ' + k:<{w}}: {a:10.3f} m²")
         L.append("-" * 62)
         for k, u in self.water_forces.items():
-            L.append(f"Su kuvveti {k:<6}     : {u:10.2f} kN")
-        L.append(f"Sismik kuvvet         : {self.seismic_force:10.2f} kN")
-        L.append(f"Destek kuvveti        : {self.support_force:10.2f} kN")
+            L.append(f"{_tr('Su kuvveti', 'Water force') + ' ' + k:<{w}}: {u:10.2f} kN")
+        L.append(f"{_tr('Sismik kuvvet', 'Seismic force'):<{w}}: {self.seismic_force:10.2f} kN")
+        L.append(f"{_tr('Destek kuvveti', 'Support force'):<{w}}: {self.support_force:10.2f} kN")
         L.append("-" * 62)
-        L.append(f"Göçme modu            : {self.mode}")
+        L.append(f"{_tr('Göçme modu', 'Failure mode'):<{w}}: {self.mode}")
         for k, n in self.normal_forces.items():
-            L.append(f"Normal kuvvet {k:<6}  : {n:10.2f} kN")
-        L.append(f"Kaydırıcı kuvvet      : {self.driving_force:10.2f} kN")
-        L.append(f"Direnç kuvveti        : {self.resisting_force:10.2f} kN")
-        L.append(f"Kayma yönü            : trend {self.sliding_direction[0]:6.1f}°, "
+            L.append(f"{_tr('Normal kuvvet', 'Normal force') + ' ' + k:<{w}}: {n:10.2f} kN")
+        L.append(f"{_tr('Kaydırıcı kuvvet', 'Driving force'):<{w}}: {self.driving_force:10.2f} kN")
+        L.append(f"{_tr('Direnç kuvveti', 'Resisting force'):<{w}}: {self.resisting_force:10.2f} kN")
+        L.append(f"{_tr('Kayma yönü', 'Sliding direction'):<{w}}: trend {self.sliding_direction[0]:6.1f}°, "
                  f"plunge {self.sliding_direction[1]:5.1f}°")
         L.append("=" * 62)
         fs = self.factor_of_safety
-        L.append(f"GÜVENLİK SAYISI (FS)  : {'∞ (stabil)' if np.isinf(fs) else f'{fs:.3f}'}")
+        L.append(f"{_tr('GÜVENLİK SAYISI (FS)', 'FACTOR OF SAFETY (FS)'):<{w}}: "
+                 f"{_tr('∞ (stabil)', '∞ (stable)') if np.isinf(fs) else f'{fs:.3f}'}")
         L.append("=" * 62)
-        for w in self.warnings:
-            L.append("UYARI: " + w)
+        for x in self.warnings:
+            L.append(WARNING_PREFIX() + x)
         return "\n".join(L)
 
 
@@ -381,7 +420,7 @@ def _water_pressures(inp: WedgeInput, geo: WedgeGeometry) -> Dict[str, float]:
     if w.mode == "percent":
         u *= w.percent / 100.0
     elif w.mode != "filled":
-        raise ValueError(f"Bilinmeyen su modu: {w.mode}")
+        raise ValueError(_tr(f"Bilinmeyen su modu: {w.mode}", f"Unknown water mode: {w.mode}"))
     return {k: u for k in names}
 
 
@@ -427,7 +466,7 @@ def analyze(inp: WedgeInput, geo: Optional[WedgeGeometry] = None) -> WedgeResult
 
     normal_forces: Dict[str, float] = {}
     if N1 > 0 and N2 > 0:
-        mode = "İki düzlemde kayma (J1 ∩ J2 boyunca)"
+        mode = _tr("İki düzlemde kayma (J1 ∩ J2 boyunca)", "Sliding on two planes (along J1 ∩ J2)")
         slide = s12
         driving = S
         resisting = N1 * tan1 + N2 * tan2 + J1.cohesion * A1 + J2.cohesion * A2
@@ -464,23 +503,25 @@ def analyze(inp: WedgeInput, geo: Optional[WedgeGeometry] = None) -> WedgeResult
         if not cands:
             # her iki düzlemden ayrılma
             if R[2] < 0:
-                mode = "Düşme / her iki düzlemden ayrılma"
+                mode = _tr("Düşme / her iki düzlemden ayrılma", "Falling / separation from both planes")
                 return WedgeResult(0.0, mode, W, geo.volume, {}, 0.0, 0.0,
                                    vector_to_trend_plunge(R),
                                    vector_to_trend_plunge(s12), water_forces, Fs,
                                    inp.support.force, geo.areas, geo, warnings)
-            mode = "Stabil (bileşke kayaya doğru)"
+            mode = _tr("Stabil (bileşke kayaya doğru)", "Stable (resultant directed into the rock)")
             return WedgeResult(np.inf, mode, W, geo.volume, {}, 0.0, 0.0,
                                (0.0, 0.0), vector_to_trend_plunge(s12), water_forces,
                                Fs, inp.support.force, geo.areas, geo, warnings)
 
         name, n, Nn, driving, resisting, slide = min(cands, key=lambda c: c[4] / max(c[3], 1e-12))
-        mode = f"Tek düzlemde kayma ({name} üzerinde, {'J1' if name == 'J2' else 'J2'} temas kaybı)"
+        other = "J1" if name == "J2" else "J2"
+        mode = _tr(f"Tek düzlemde kayma ({name} üzerinde, {other} temas kaybı)",
+                 f"Sliding on a single plane (on {name}, contact lost on {other})")
         normal_forces = {name: Nn}
 
     if driving <= 1e-9:
         fs = np.inf
-        mode += " — kaydırıcı kuvvet yok"
+        mode += _tr(" — kaydırıcı kuvvet yok", " — no driving force")
     else:
         fs = resisting / driving
 
@@ -508,17 +549,27 @@ class SupportResult:
 
     def summary(self) -> str:
         if self.achievable and self.force == 0.0:
-            return (f"Destek gerekmiyor: mevcut FS = {self.fs_initial:.3f} zaten hedef "
-                    f"FS = {self.target_fs:.2f} değerini sağlıyor. Kuvvet hesaplamak için "
-                    f"daha yüksek bir hedef FS girin.")
+            return _tr(f"Destek gerekmiyor: mevcut FS = {self.fs_initial:.3f} zaten hedef "
+                     f"FS = {self.target_fs:.2f} değerini sağlıyor. Kuvvet hesaplamak için "
+                     f"daha yüksek bir hedef FS girin.",
+                     f"No support required: the current FS = {self.fs_initial:.3f} already meets the target "
+                     f"FS = {self.target_fs:.2f}. Enter a higher target FS to compute a force.")
         if not self.achievable:
-            return (f"Hedef FS bu bulon yönüyle (trend {self.trend:.0f}°, plunge {self.plunge:.0f}°) "
-                    f"ulaşılamıyor — kuvvet kamayı kaydırıyor veya kilitlemiyor. "
-                    f"Optimum yön için trend/plunge boş bırakın.")
-        return (f"Mevcut FS = {self.fs_initial:.3f}  →  hedef FS = {self.target_fs:.2f}\n"
-                f"Gerekli destek: {self.force:,.0f} kN  (kama ağırlığının %{100*self.ratio:.1f}'i)\n"
-                f"Yön: trend {self.trend:.1f}°, plunge {self.plunge:.1f}°  "
-                f"({'pasif' if self.passive else 'aktif'}), sağlanan FS = {self.fs_achieved:.3f}")
+            return _tr(f"Hedef FS bu bulon yönüyle (trend {self.trend:.0f}°, plunge {self.plunge:.0f}°) "
+                     f"ulaşılamıyor — kuvvet kamayı kaydırıyor veya kilitlemiyor. "
+                     f"Optimum yön için trend/plunge boş bırakın.",
+                     f"The target FS cannot be reached with this bolt direction (trend {self.trend:.0f}°, "
+                     f"plunge {self.plunge:.0f}°) — the force drives the wedge or fails to lock it. "
+                     f"Leave trend/plunge empty for the optimum direction.")
+        mode = PASSIVE() if self.passive else ACTIVE()
+        return _tr(f"Mevcut FS = {self.fs_initial:.3f}  →  hedef FS = {self.target_fs:.2f}\n"
+                 f"Gerekli destek: {self.force:,.0f} kN  (kama ağırlığının %{100 * self.ratio:.1f}'i)\n"
+                 f"Yön: trend {self.trend:.1f}°, plunge {self.plunge:.1f}°  "
+                 f"({mode}), sağlanan FS = {self.fs_achieved:.3f}",
+                 f"Current FS = {self.fs_initial:.3f}  →  target FS = {self.target_fs:.2f}\n"
+                 f"Required support: {self.force:,.0f} kN  ({100 * self.ratio:.1f}% of the wedge weight)\n"
+                 f"Direction: trend {self.trend:.1f}°, plunge {self.plunge:.1f}°  "
+                 f"({mode}), achieved FS = {self.fs_achieved:.3f}")
 
 
 def optimum_support_direction(inp: WedgeInput, passive: bool = False,
@@ -670,15 +721,17 @@ def plot_wedge(res: WedgeResult, show: bool = True, savepath: Optional[str] = No
     if res.driving_force > 0:
         d = trend_plunge_vector(*res.sliding_direction) * geo.height * 0.45
         ax.quiver(*geo.centroid, *d, color="k", arrow_length_ratio=0.18, linewidth=2.2)
-        ax.text(*(geo.centroid + d), "  kayma yönü", fontsize=8)
+        ax.text(*(geo.centroid + d), "  " + _tr("kayma yönü", "sliding direction"), fontsize=8)
     P = np.array(list(geo.vertices.values()))
     mn, mx = P.min(axis=0), P.max(axis=0); span = (mx - mn).max(); mid = (mn + mx) / 2
     ax.set_xlim(mid[0] - span / 2, mid[0] + span / 2); ax.set_ylim(mid[1] - span / 2, mid[1] + span / 2)
     ax.set_zlim(mid[2] - span / 2, mid[2] + span / 2)
-    ax.set_xlabel("Doğu (m)"); ax.set_ylabel("Kuzey (m)"); ax.set_zlabel("Kot (m)")
+    ax.set_xlabel(_tr("Doğu (m)", "East (m)")); ax.set_ylabel(_tr("Kuzey (m)", "North (m)"))
+    ax.set_zlabel(_tr("Kot (m)", "Elevation (m)"))
     ax.view_init(elev=22, azim=-135)
     ax.xaxis.pane.set_facecolor(style.LIGHT); ax.yaxis.pane.set_facecolor(style.LIGHT); ax.zaxis.pane.set_facecolor("white")
-    ax.set_title(f"Kama geometrisi ve göçme modu", loc="left", color=style.NAVY, fontweight="bold")
+    ax.set_title(_tr("Kama geometrisi ve göçme modu", "Wedge geometry and failure mode"),
+                 loc="left", color=style.NAVY, fontweight="bold")
     handles = [plt.Rectangle((0, 0), 1, 1, fc=colors[k], alpha=0.6, ec="k") for k in geo.faces]
     ax.legend(handles, [labels[k] for k in geo.faces], loc="upper left", fontsize=8)
     tr, pl = res.intersection_line
@@ -729,13 +782,13 @@ def plot_stereonet(inp: WedgeInput, geo: Optional[WedgeGeometry] = None, equal_a
     if pts:
         ax.scatter(*zip(*pts), s=3, color="#f9d6d5", zorder=2, linewidths=0)
 
-    planes = [("Eklem 1", inp.joint1.dip, inp.joint1.dipdir, style.J1, "-"),
-              ("Eklem 2", inp.joint2.dip, inp.joint2.dipdir, style.J2, "-"),
-              ("Şev yüzü", inp.slope_face.dip, inp.slope_face.dipdir, "k", "-"),
-              ("Üst şev", inp.upper_slope.dip, inp.upper_slope.dipdir, style.UPPER, "--")]
+    planes = [(_tr("Eklem 1", "Joint 1"), inp.joint1.dip, inp.joint1.dipdir, style.J1, "-"),
+              (_tr("Eklem 2", "Joint 2"), inp.joint2.dip, inp.joint2.dipdir, style.J2, "-"),
+              (_tr("Şev yüzü", "Slope face"), inp.slope_face.dip, inp.slope_face.dipdir, "k", "-"),
+              (_tr("Üst şev", "Upper slope"), inp.upper_slope.dip, inp.upper_slope.dipdir, style.UPPER, "--")]
     if inp.tension_crack is not None:
         tc = inp.tension_crack
-        planes.append(("Çekme çatlağı", tc.dip, tc.dipdir, style.TC, "-."))
+        planes.append((_tr("Çekme çatlağı", "Tension crack"), tc.dip, tc.dipdir, style.TC, "-."))
     for name, dip, dd, col, ls in planes:
         xs, ys = _great_circle(dip, dd, equal_area)
         ax.plot(xs, ys, color=col, lw=1.9, ls=ls, label=f"{name}  {dip:.0f}/{dd:03.0f}", zorder=5)
@@ -747,9 +800,11 @@ def plot_stereonet(inp: WedgeInput, geo: Optional[WedgeGeometry] = None, equal_a
     ax.plot(ix, iy, marker="*", color="#6c3483", ms=15, mec="white", mew=0.8, zorder=8, ls="none",
             label=f"J1∩J2  {tr:.0f}/{pl:.0f}")
     xs, ys = zip(*[_stereo_xy(trend_plunge_vector(t, phi), equal_area) for t in np.linspace(0, 360, 181)])
-    ax.plot(xs, ys, color="#7b4b2a", lw=1.1, ls=":", label=f"Sürtünme konisi φ = {phi:.0f}°", zorder=4)
+    ax.plot(xs, ys, color="#7b4b2a", lw=1.1, ls=":", label=f"{_tr('Sürtünme konisi', 'Friction cone')} φ = {phi:.0f}°", zorder=4)
     ax.set_aspect("equal"); ax.set_xlim(-1.22, 1.22); ax.set_ylim(-1.22, 1.22); ax.axis("off")
-    ax.set_title("Stereonet — " + ("eşit alan (Schmidt)" if equal_area else "eşit açı (Wulff)") + ", alt yarımküre",
+    ax.set_title("Stereonet — " + (_tr("eşit alan (Schmidt)", "equal area (Schmidt)") if equal_area
+                                   else _tr("eşit açı (Wulff)", "equal angle (Wulff)"))
+                 + _tr(", alt yarımküre", ", lower hemisphere"),
                  loc="left", color=style.NAVY, fontweight="bold")
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.01), fontsize=7.5, ncol=3)
     if res is not None:

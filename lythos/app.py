@@ -16,10 +16,10 @@ from .ui import qt  # noqa: F401  (Qt bağlamasını matplotlib'den önce sabitl
 
 from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QAction, QKeySequence
-from PySide6.QtWidgets import (QApplication, QLabel, QMainWindow, QMessageBox, QSizePolicy,
-                               QStatusBar, QTabWidget, QToolBar, QWidget)
+from PySide6.QtWidgets import (QApplication, QComboBox, QLabel, QMainWindow, QMessageBox,
+                               QSizePolicy, QStatusBar, QTabWidget, QToolBar, QWidget)
 
-from . import APP_NAME, MODULE_KINEMATIC, ORG, __version__, theme
+from . import APP_NAME, MODULE_KINEMATIC, ORG, __version__, i18n, theme
 from .ui.kinematic import KinematicModule
 
 ABOUT = {
@@ -48,11 +48,13 @@ License: MIT · UI: PySide6 (LGPL)</p>""",
 }
 
 UI = {
-    "TR": {"module": "Modül:", "theme_dark": "🌙 Koyu tema", "theme_light": "☀ Açık tema",
+    "TR": {"language": "Dil:", "theme_dark": "🌙 Koyu tema", "theme_light": "☀ Açık tema",
            "about": "Hakkında", "ready": "Hazır"},
-    "EN": {"module": "Module:", "theme_dark": "🌙 Dark theme", "theme_light": "☀ Light theme",
+    "EN": {"language": "Language:", "theme_dark": "🌙 Dark theme", "theme_light": "☀ Light theme",
            "about": "About", "ready": "Ready"},
 }
+
+LANGUAGE_NAMES = {"TR": "TR — Türkçe", "EN": "EN — English"}
 
 
 @dataclass(frozen=True)
@@ -73,7 +75,7 @@ class LythosSuite(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.lang = "TR"
+        self.lang = i18n.language()
         self.theme_name = "light"
         self.modules: Dict[str, QWidget] = {}
 
@@ -109,6 +111,17 @@ class LythosSuite(QMainWindow):
         spacer = QWidget(); spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         tb.addWidget(spacer)
 
+        self.lbl_language = QLabel()
+        tb.addWidget(self.lbl_language)
+        self.lang_box = QComboBox()
+        for code in i18n.LANGS:
+            self.lang_box.addItem(LANGUAGE_NAMES[code], code)
+        self.lang_box.setCurrentIndex(max(self.lang_box.findData(self.lang), 0))
+        self.lang_box.currentIndexChanged.connect(
+            lambda _: self.set_language(self.lang_box.currentData()))
+        tb.addWidget(self.lang_box)
+        tb.addSeparator()
+
         self.a_theme = QAction("", self)
         self.a_theme.triggered.connect(self.toggle_theme)
         tb.addAction(self.a_theme)
@@ -122,6 +135,7 @@ class LythosSuite(QMainWindow):
         u = UI[self.lang]
         self.a_theme.setText(u["theme_light"] if self.theme_name == "dark" else u["theme_dark"])
         self.a_about.setText(u["about"])
+        self.lbl_language.setText("  " + u["language"] + " ")
 
     # ------------------------------------------------------------------ tema / dil
     def apply_theme(self, name: str):
@@ -139,13 +153,20 @@ class LythosSuite(QMainWindow):
         QSettings(ORG, APP_NAME).setValue("theme", self.theme_name)
 
     def set_language(self, lang: str):
-        if lang not in UI:
+        """Uygulama dilini değiştirir: global ayar + tüm modüller + kabuk metinleri."""
+        if lang not in UI or lang == self.lang:
             return
+        i18n.set_language(lang)
         self.lang = lang
+        if self.lang_box.currentData() != lang:
+            self.lang_box.blockSignals(True)
+            self.lang_box.setCurrentIndex(max(self.lang_box.findData(lang), 0))
+            self.lang_box.blockSignals(False)
         for widget in self.modules.values():
             if hasattr(widget, "set_language"):
                 widget.set_language(lang)
         self._retext()
+        self.statusBar().showMessage(f"{APP_NAME} — {UI[lang]['ready']}", 4000)
 
     def show_about(self):
         QMessageBox.about(self, UI[self.lang]["about"], ABOUT[self.lang])

@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QFileDia
 import numpy as np
 
 from .. import theme
+from ..i18n import pct
 from ..kinematics import engine as eng
 from ..kinematics import htmlreport as H
 from ..kinematics.i18n import LANG
@@ -52,7 +53,6 @@ class ScreeningPanel(QWidget):
     gereken tüm veriyi taşıyan bir sözlük yayar.
     """
     handoff = Signal(dict)
-    language_changed = Signal(str)
     status = Signal(str)
 
     def __init__(self, lang: str = "TR"):
@@ -76,14 +76,6 @@ class ScreeningPanel(QWidget):
         main.setContentsMargins(12, 12, 12, 12); main.setSpacing(12)
 
         left = QVBoxLayout(); left.setSpacing(10)
-
-        self.lbl_lang = QLabel()
-        self.combo_lang = QComboBox(); self.combo_lang.addItems(["TR - Türkçe", "EN - English"])
-        self.combo_lang.setCurrentIndex(0 if self.current_lang == "TR" else 1)
-        self.combo_lang.currentIndexChanged.connect(self._on_language_changed)
-        row = QHBoxLayout(); row.setSpacing(8)
-        row.addWidget(self.lbl_lang); row.addWidget(self.combo_lang, 1)
-        left.addLayout(row)
 
         # --- şev ve malzeme parametreleri
         self.grp_slope = QGroupBox()
@@ -157,17 +149,11 @@ class ScreeningPanel(QWidget):
     def t(self) -> dict:
         return LANG[self.current_lang]
 
-    def _on_language_changed(self, index: int):
-        self.set_language("TR" if index == 0 else "EN")
-        self.language_changed.emit(self.current_lang)
-
     def set_language(self, lang: str):
+        """Dili değiştirir (dil seçicisi suite araç çubuğundadır)."""
         if lang not in LANG or lang == self.current_lang:
             return
         self.current_lang = lang
-        self.combo_lang.blockSignals(True)
-        self.combo_lang.setCurrentIndex(0 if lang == "TR" else 1)
-        self.combo_lang.blockSignals(False)
         self.update_ui_texts()
         self.update_analysis()
 
@@ -178,7 +164,6 @@ class ScreeningPanel(QWidget):
 
     def update_ui_texts(self):
         t = self.t
-        self.lbl_lang.setText(t["lbl_lang"])
         self.grp_slope.setTitle(t["grp_slope"]); self.grp_joints.setTitle(t["grp_joints"])
         self.lbl_slope_dip.setText(t["lbl_slope_dip"]); self.lbl_slope_dir.setText(t["lbl_slope_dir"])
         self.lbl_frict.setText(t["lbl_frict"]); self.lbl_lat.setText(t["lbl_lat"]); self.lbl_sim.setText(t["lbl_sim"])
@@ -294,7 +279,7 @@ class ScreeningPanel(QWidget):
         self.prob_body = H.probabilistic_report(ctx["t"], mc, ctx["labels"], ctx["mode"])
         self.prob_html = H.wrap(self.prob_body)
         self.prob_text.setHtml(self.prob_html)
-        self.status.emit(f"{ctx['t']['prob_pof']}: %{mc.pof:.2f}")
+        self.status.emit(f"{ctx['t']['prob_pof']}: {pct(mc.pof)}")
 
     # ------------------------------------------------------------------ limit dengeye aktarım
     def _on_handoff(self):
@@ -360,7 +345,7 @@ class ScreeningPanel(QWidget):
 
     def state(self) -> dict:
         labels, dips, dip_dirs, stds = self.table_data()
-        return {"lang": self.current_lang, "slope_dip": self.slope_dip_input.value(),
+        return {"slope_dip": self.slope_dip_input.value(),
                 "slope_dir": self.slope_dir_input.value(), "friction": self.friction_input.value(),
                 "lateral": self.lateral_input.value(), "trials": self.sim_input.value(),
                 "mode": self.combo_analysis.currentIndex(), "zone": self.cb_risk_zone.isChecked(),
@@ -371,7 +356,6 @@ class ScreeningPanel(QWidget):
     def apply_state(self, d: dict):
         if not isinstance(d, dict):
             return
-        self.set_language(d.get("lang", self.current_lang))
         for key, widget in (("slope_dip", self.slope_dip_input), ("slope_dir", self.slope_dir_input),
                             ("friction", self.friction_input), ("lateral", self.lateral_input),
                             ("trials", self.sim_input)):

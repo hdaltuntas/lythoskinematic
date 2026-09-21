@@ -12,6 +12,8 @@ brings rock slope kinematics and stability into a single workflow:
 
 The two steps are bridged: the most critical discontinuity or intersection found
 during screening is transferred into the limit-equilibrium inputs with one click.
+The whole application — both modules, every result text, plot label and PDF report —
+is fully bilingual in **Turkish and English**, switchable at runtime from the toolbar.
 
 > This application merges two formerly separate programs: **SlopeKinematics**
 > (kinematics + probability) and **Kinematix** (limit equilibrium + bolting +
@@ -23,9 +25,9 @@ during screening is transferred into the limit-equilibrium inputs with one click
 |---|---|
 | ![Kinematic screening](assets/screenshot_screening.png) | ![Limit equilibrium](assets/screenshot_equilibrium_dark.png) |
 
-| Probabilistic analysis report |
-|---|
-| ![Probabilistic analysis](assets/screenshot_probability.png) |
+| Probabilistic analysis report | Limit equilibrium in English |
+|---|---|
+| ![Probabilistic analysis](assets/screenshot_probability.png) | ![English interface](assets/screenshot_equilibrium_en.png) |
 
 ## Install & run
 
@@ -48,7 +50,6 @@ Python 3.9+ is required. The UI is built on PySide6 (LGPL); `mplstereonet` and
   for discontinuity orientation uncertainty (dip and dip direction std. dev.); runs
   on a background thread, the UI never freezes
 - **PDF report:** kinematic checks + probabilistic analysis + stereonet in one file
-- **Turkish / English** interface
 
 ### 2 · Limit Equilibrium
 - **Wedge (Swedge):** tetrahedral wedge geometry, Hoek & Bray vector limit
@@ -58,6 +59,12 @@ Python 3.9+ is required. The UI is built on PySide6 (LGPL); `mplstereonet` and
 - **Support design:** support force required for a target FS, bolt spacing × length
   recommendation matrix, capacity/FS check for the chosen design
 - **PDF report:** project data, input tables, figures, force-balance tables
+
+### Language
+The toolbar language selector switches the entire suite between Turkish and English:
+menus, input forms, result texts, warnings, error messages, plot labels and the PDF
+report. Switching rebuilds the panels without losing the inputs, and never changes a
+number — only the text.
 
 ### The bridge: screening → limit equilibrium
 The **"→ Send critical result to Limit Equilibrium"** button writes the most critical
@@ -82,6 +89,7 @@ lythos_suite.py            entry point
 lythos/
   app.py                   Lythos Suite shell (module tabs, theme, language, persistence)
   theme.py                 shared light/dark theme (QSS + matplotlib palette)
+  i18n.py                  language switch; bilingual text helper T("tr", "en")
   stereonet.py             shared lower-hemisphere stereonet projection (no extra deps)
   kinematics/              kinematic screening core
     engine.py              Markland criteria + Monte Carlo (independent of Qt)
@@ -90,6 +98,7 @@ lythos/
     i18n.py                TR/EN strings
   rockslope/               limit-equilibrium core (independent of Qt)
     core.py wedge.py planar.py toppling.py bolts.py report.py style.py
+    text.py                shared bilingual labels (summary alignment, block modes)
   ui/                      PySide6 interface
     screening.py           kinematic screening panel
     equilibrium.py         limit-equilibrium panel
@@ -101,6 +110,12 @@ tests/                     pytest validation suite
 To add a module, append a `ModuleSpec` to `MODULES` in `lythos/app.py`; if the module
 provides `state()`, `apply_state()`, `set_language()`, `apply_theme()` and
 `shutdown()`, the shell handles the rest.
+
+Translations are written inline rather than kept in a key catalogue:
+`T("Şev yüksekliği", "Slope height")` returns the string for the current language, so
+there is no key bookkeeping and no such thing as a missing key. The computation cores
+use it too, which is why they stay free of any Qt dependency while still producing
+localized result texts.
 
 ## Merge notes
 
@@ -133,6 +148,9 @@ The computation cores are pinned against closed-form solutions with pytest:
   Monte Carlo result must reduce to the deterministic 0/100 answer
 - **stereonet** — projection radii are checked against the analytical Schmidt/Wulff
   values, and poles against being perpendicular to the dip vector
+- **i18n** — every summary switches language, the fixed-width label column stays
+  aligned in both, the numbers never change, and internal keys (such as the block
+  failure mode used for plot colours) are never translated
 
 ```bash
 pip install -r requirements-dev.txt

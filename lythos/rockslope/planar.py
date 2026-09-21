@@ -7,6 +7,8 @@ from typing import Optional, Dict, List, Tuple
 import numpy as np
 
 from . import style
+from ..i18n import T as _tr
+from .text import ACTIVE, LABEL_WIDTH, PASSIVE, WARNING_PREFIX
 
 @dataclass
 class PlanarInput:
@@ -69,32 +71,39 @@ class PlanarResult:
 
     def summary(self) -> str:
         i = self.inp
-        L = ["=" * 62, "  DÜZLEMSEL KAYMA ANALİZİ  (Hoek & Bray, 1 m şev uzunluğu)", "=" * 62,
-             f"Şev: H = {i.slope_height:.2f} m, ψf = {i.face_angle:.1f}°, ψp = {i.plane_angle:.1f}°, ψs = {i.upper_angle:.1f}°",
-             f"Blok alanı            : {self.area:10.3f} m²",
-             f"Blok ağırlığı W       : {self.weight:10.2f} kN/m",
-             f"Kayma düzlemi uzunluğu: {self.plane_length:10.3f} m"]
+        w = LABEL_WIDTH
+        L = ["=" * 62,
+             "  " + _tr("DÜZLEMSEL KAYMA ANALİZİ  (Hoek & Bray, 1 m şev uzunluğu)",
+                      "PLANAR SLIDING ANALYSIS  (Hoek & Bray, 1 m slope length)"),
+             "=" * 62,
+             f"{_tr('Şev', 'Slope')}: H = {i.slope_height:.2f} m, ψf = {i.face_angle:.1f}°, "
+             f"ψp = {i.plane_angle:.1f}°, ψs = {i.upper_angle:.1f}°",
+             f"{_tr('Blok alanı', 'Block area'):<{w}}: {self.area:10.3f} m²",
+             f"{_tr('Blok ağırlığı W', 'Block weight W'):<{w}}: {self.weight:10.2f} kN/m",
+             f"{_tr('Kayma düzlemi uzunluğu', 'Sliding plane length'):<{w}}: {self.plane_length:10.3f} m"]
+        tc = f"{_tr('Çekme çatlağı', 'Tension crack'):<{w}}: "
         if self.tc_x is not None:
-            L.append(f"Çekme çatlağı         : derinlik z = {self.tc_depth:.2f} m, "
-                     f"{'şev yüzünde' if self.tc_on_face else 'üst şevde'} (x = {self.tc_x:.2f} m)")
+            where = _tr("şev yüzünde", "on the slope face") if self.tc_on_face else _tr("üst şevde", "in the upper slope")
+            L.append(tc + f"{_tr('derinlik', 'depth')} z = {self.tc_depth:.2f} m, {where} (x = {self.tc_x:.2f} m)")
         else:
-            L.append("Çekme çatlağı         : Yok")
+            L.append(tc + _tr("Yok", "None"))
         L += ["-" * 62,
-              f"Su yüksekliği zw      : {self.water_height:10.2f} m",
-              f"Su kuvveti U (düzlem) : {self.water_U:10.2f} kN/m",
-              f"Su kuvveti V (çatlak) : {self.water_V:10.2f} kN/m",
-              f"Sismik kuvvet (yatay) : {self.seismic_force:10.2f} kN/m",
-              f"Destek kuvveti T      : {i.support_force:10.2f} kN/m  @ {i.support_angle:.1f}° "
-              f"({'pasif' if i.support_passive else 'aktif'})",
+              f"{_tr('Su yüksekliği zw', 'Water height zw'):<{w}}: {self.water_height:10.2f} m",
+              f"{_tr('Su kuvveti U (düzlem)', 'Water force U (plane)'):<{w}}: {self.water_U:10.2f} kN/m",
+              f"{_tr('Su kuvveti V (çatlak)', 'Water force V (crack)'):<{w}}: {self.water_V:10.2f} kN/m",
+              f"{_tr('Sismik kuvvet (yatay)', 'Seismic force (horiz.)'):<{w}}: {self.seismic_force:10.2f} kN/m",
+              f"{_tr('Destek kuvveti T', 'Support force T'):<{w}}: {i.support_force:10.2f} kN/m  "
+              f"@ {i.support_angle:.1f}° ({PASSIVE() if i.support_passive else ACTIVE()})",
               "-" * 62,
-              f"Etkin normal kuvvet   : {self.normal_force:10.2f} kN/m",
-              f"Kaydırıcı kuvvet      : {self.driving:10.2f} kN/m",
-              f"Direnç kuvveti        : {self.resisting:10.2f} kN/m",
+              f"{_tr('Etkin normal kuvvet', 'Effective normal force'):<{w}}: {self.normal_force:10.2f} kN/m",
+              f"{_tr('Kaydırıcı kuvvet', 'Driving force'):<{w}}: {self.driving:10.2f} kN/m",
+              f"{_tr('Direnç kuvveti', 'Resisting force'):<{w}}: {self.resisting:10.2f} kN/m",
               "=" * 62]
         fs = self.factor_of_safety
-        L.append(f"GÜVENLİK SAYISI (FS)  : {'∞ (stabil)' if np.isinf(fs) else f'{fs:.3f}'}")
+        L.append(f"{_tr('GÜVENLİK SAYISI (FS)', 'FACTOR OF SAFETY (FS)'):<{w}}: "
+                 f"{_tr('∞ (stabil)', '∞ (stable)') if np.isinf(fs) else f'{fs:.3f}'}")
         L.append("=" * 62)
-        L += ["UYARI: " + w for w in self.warnings]
+        L += [WARNING_PREFIX() + x for x in self.warnings]
         return "\n".join(L)
 
 
@@ -103,10 +112,16 @@ def _planar_geometry(i: PlanarInput):
     H = i.slope_height
     pf, pp, ps = map(np.radians, (i.face_angle, i.plane_angle, i.upper_angle))
     if not (i.upper_angle < i.plane_angle < i.face_angle):
-        raise ValueError(f"ψs < ψp < ψf olmalı (ψs={i.upper_angle}°, ψp={i.plane_angle}°, ψf={i.face_angle}°). "
-                         "Kayma düzlemi şev yüzünden dik ise gün ışığına çıkmaz; üst şevden yatıksa blok kapanmaz.")
+        raise ValueError(
+            _tr(f"ψs < ψp < ψf olmalı (ψs={i.upper_angle}°, ψp={i.plane_angle}°, ψf={i.face_angle}°). "
+              "Kayma düzlemi şev yüzünden dik ise gün ışığına çıkmaz; üst şevden yatıksa blok kapanmaz.",
+              f"ψs < ψp < ψf is required (ψs={i.upper_angle}°, ψp={i.plane_angle}°, ψf={i.face_angle}°). "
+              "A sliding plane steeper than the face does not daylight; one flatter than the upper slope "
+              "does not close the block."))
     if i.face_angle >= 90:
-        raise ValueError("Şev yüzü eğimi 90°'den küçük olmalı (düşey/askıda şev bu yöntemle çözülmez).")
+        raise ValueError(_tr("Şev yüzü eğimi 90°'den küçük olmalı (düşey/askıda şev bu yöntemle çözülmez).",
+                           "The slope face angle must be below 90° (a vertical/overhanging face is outside "
+                           "this method)."))
     xc = H / np.tan(pf)                      # tepe
     tp, ts = np.tan(pp), np.tan(ps)
     warnings = []
@@ -114,19 +129,23 @@ def _planar_geometry(i: PlanarInput):
     if i.tc_distance is None:
         x_top = (H - xc * ts) / (tp - ts)
         if x_top <= xc:
-            raise ValueError("Kayma düzlemi üst şeve ulaşmadan şev yüzünden çıkıyor — geometri geçersiz.")
+            raise ValueError(_tr("Kayma düzlemi üst şeve ulaşmadan şev yüzünden çıkıyor — geometri geçersiz.",
+                               "The sliding plane exits through the face before reaching the upper slope — "
+                               "invalid geometry."))
         poly.append((x_top, x_top * tp))
         x_bot, z, tc_on_face, tc_x = x_top, 0.0, False, None
     else:
         tc_x = xc + i.tc_distance
         if tc_x <= 0:
-            raise ValueError("Çekme çatlağı topuğun gerisinde — geçersiz.")
+            raise ValueError(_tr("Çekme çatlağı topuğun gerisinde — geçersiz.",
+                               "The tension crack lies behind the toe — invalid."))
         tc_on_face = tc_x < xc
         y_s = tc_x * np.tan(pf) if tc_on_face else H + (tc_x - xc) * ts
         y_p = tc_x * tp
         z = y_s - y_p
         if z <= 0:
-            raise ValueError("Çekme çatlağı kayma düzleminin altında kalıyor (z ≤ 0) — mesafeyi azaltın.")
+            raise ValueError(_tr("Çekme çatlağı kayma düzleminin altında kalıyor (z ≤ 0) — mesafeyi azaltın.",
+                               "The tension crack falls below the sliding plane (z ≤ 0) — reduce the distance."))
         if tc_on_face:
             poly = [(0.0, 0.0), (tc_x, y_s), (tc_x, y_p)]
         else:
@@ -163,7 +182,7 @@ def planar_analyze(i: PlanarInput) -> PlanarResult:
             zw = hw
             U = 0.5 * i.gamma_w * hw * Lp
     elif i.water_mode != "dry":
-        raise ValueError(f"Bilinmeyen su modu: {i.water_mode}")
+        raise ValueError(_tr(f"Bilinmeyen su modu: {i.water_mode}", f"Unknown water mode: {i.water_mode}"))
 
     # --- Sismik ---
     Fh = i.seismic_h * W                                    # yatay, şev dışına
@@ -182,7 +201,9 @@ def planar_analyze(i: PlanarInput) -> PlanarResult:
     if T > 0 and i.support_passive:
         resisting += Tpar + Tnor * np.tan(phi)
     if N <= 0:
-        warnings.append("Etkin normal kuvvet ≤ 0: blok düzlemden ayrılıyor (su/sismik çok yüksek).")
+        warnings.append(_tr("Etkin normal kuvvet ≤ 0: blok düzlemden ayrılıyor (su/sismik çok yüksek).",
+                          "Effective normal force ≤ 0: the block separates from the plane "
+                          "(water/seismic load too high)."))
     fs = np.inf if S <= 1e-9 else resisting / S
     return PlanarResult(float(fs), W, A, Lp, z, tc_x, tc_on_face, U, V, zw, Fh,
                         float(N), float(S), float(resisting), poly, i, warnings)
@@ -240,10 +261,10 @@ def plot_planar(res: PlanarResult, ax=None, show: bool = True, savepath: Optiona
     ax.plot(*zip(*ground), color=style.ROCK_EDGE, lw=2.2, zorder=3)
     ax.add_patch(Polygon(res.polygon, closed=True, facecolor="#f5b7b1", edgecolor=style.J1, lw=1.6, alpha=0.95, zorder=4))
     xb = res.polygon[-1][0]
-    ax.plot([0, xb], [0, xb * np.tan(pp)], color=style.J1, lw=2.0, ls="--", zorder=5, label=f"Kayma düzlemi ψp = {i.plane_angle:g}°")
+    ax.plot([0, xb], [0, xb * np.tan(pp)], color=style.J1, lw=2.0, ls="--", zorder=5, label=f"{_tr('Kayma düzlemi', 'Sliding plane')} ψp = {i.plane_angle:g}°")
     if res.tc_x is not None:
         yb = res.tc_x * np.tan(pp); ys_ = yb + res.tc_depth
-        ax.plot([res.tc_x, res.tc_x], [yb, ys_], color=style.TC, lw=2.2, zorder=6, label=f"Çekme çatlağı z = {res.tc_depth:.1f} m")
+        ax.plot([res.tc_x, res.tc_x], [yb, ys_], color=style.TC, lw=2.2, zorder=6, label=f"{_tr('Çekme çatlağı', 'Tension crack')} z = {res.tc_depth:.1f} m")
         if res.water_height > 0:
             ax.fill_betweenx([yb, yb + res.water_height], res.tc_x - 0.012 * xr, res.tc_x + 0.012 * xr,
                              color=style.WATER, alpha=0.75, zorder=7)
@@ -270,8 +291,9 @@ def plot_planar(res: PlanarResult, ax=None, show: bool = True, savepath: Optiona
     if res.tc_x is not None and not res.tc_on_face:
         style.dim_line(ax, (xc, H + 0.06 * H), (res.tc_x, H + 0.06 * H), f"b = {i.tc_distance:g} m", offset=(0, 0.05 * H))
     ax.set_aspect("equal"); ax.set_xlim(x_left, xr); ax.set_ylim(y_bot, y_top + 0.35 * H)
-    ax.set_xlabel("Yatay mesafe (m)"); ax.set_ylabel("Kot (m)")
-    style.title(ax, "Düzlemsel kayma — 2D kesit (1 m şev uzunluğu)",
+    ax.set_xlabel(_tr("Yatay mesafe (m)", "Horizontal distance (m)")); ax.set_ylabel(_tr("Kot (m)", "Elevation (m)"))
+    style.title(ax, _tr("Düzlemsel kayma — 2D kesit (1 m şev uzunluğu)",
+                      "Planar sliding — 2D section (1 m slope length)"),
                 f"ψf = {i.face_angle:g}°, ψp = {i.plane_angle:g}°, ψs = {i.upper_angle:g}°, c = {i.cohesion:g} kPa, φ = {i.friction:g}°, γ = {i.unit_weight:g} kN/m³")
     style.result_box(ax, [f"FS = {style.fs_text(res.factor_of_safety)}",
                           f"N' = {res.normal_force:,.0f} kN/m", f"S  = {res.driving:,.0f} kN/m",

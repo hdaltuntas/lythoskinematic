@@ -18,6 +18,7 @@ from . import qt  # noqa: F401
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 
+from .. import i18n
 from .equilibrium import EquilibriumPanel
 from .screening import ScreeningPanel
 
@@ -44,7 +45,6 @@ class KinematicModule(QWidget):
         # tarama -> limit denge köprüsü
         self.screening.handoff.connect(self._on_handoff)
         self.screening.status.connect(self.status)
-        self.screening.language_changed.connect(lambda _: self._retitle())
         self._retitle()
 
     # ------------------------------------------------------------------ köprü
@@ -53,12 +53,14 @@ class KinematicModule(QWidget):
         self.tabs.setCurrentWidget(self.equilibrium)
 
     def _retitle(self):
-        for i, title in enumerate(TAB_TITLES.get(self.screening.current_lang, TAB_TITLES["TR"])):
+        for i, title in enumerate(TAB_TITLES.get(i18n.language(), TAB_TITLES["TR"])):
             self.tabs.setTabText(i, title)
 
     # ------------------------------------------------------------------ suite arayüzü
     def set_language(self, lang: str):
+        """Modülün iki panelini de yeni dile geçirir (global dil suite'te ayarlanır)."""
         self.screening.set_language(lang)
+        self.equilibrium.set_language(lang)
         self._retitle()
 
     def apply_theme(self, name: str):

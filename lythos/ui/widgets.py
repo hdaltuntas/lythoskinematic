@@ -37,7 +37,7 @@ class Num(QDoubleSpinBox):
 class Opt(QLineEdit):
     """Boş bırakılabilen sayısal alan (boş = otomatik)."""
 
-    def __init__(self, placeholder="otomatik"):
+    def __init__(self, placeholder="—"):
         super().__init__()
         self.setPlaceholderText(placeholder); self.setMinimumWidth(70)
         self.setAlignment(Qt.AlignmentFlag.AlignRight)

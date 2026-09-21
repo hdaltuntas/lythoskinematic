@@ -11,6 +11,8 @@ import os
 import datetime
 from typing import Dict, List, Tuple, Optional, Sequence
 
+from ..i18n import T as _tr
+from ..i18n import language as _lang
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import mm
@@ -24,7 +26,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 NAVY = colors.HexColor("#1f3b5a"); ACCENT = colors.HexColor("#2874a6"); GREY = colors.HexColor("#5b6770")
 LIGHT = colors.HexColor("#eef1f5"); LINE = colors.HexColor("#c9d1dc"); OK = colors.HexColor("#1e8449"); BAD = colors.HexColor("#c0392b")
 
-METHOD_TEXT = {
+_METHOD_TR = {
     "wedge": ("Analiz, Hoek & Bray (1981) tarafından verilen ve Wyllie & Mah (2004) tarafından geliştirilen tetrahedral kama "
               "limit denge yöntemine dayanır. Kama, iki süreksizlik düzlemi, şev yüzü, üst şev ve isteğe bağlı çekme çatlağı ile "
               "sınırlanır; bileşke kuvvet (ağırlık, su basınçları, sismik yük ve aktif destek) süreksizlik normalleri ve kesişim "
@@ -41,6 +43,58 @@ METHOD_TEXT = {
                  "üçgen su basıncı, blok tabanında yamuk kaldırma dağılımı kabul edilir. Güvenlik sayısı, mevcut sürtünme "
                  "açısının topuk bloğunu tam dengede tutan sürtünme açısına oranı (tanφ/tanφ_req) olarak tanımlanır."),
 }
+
+
+_METHOD_EN = {
+    "wedge": ("The analysis follows the tetrahedral wedge limit-equilibrium method given by Hoek & Bray (1981) and "
+              "developed further by Wyllie & Mah (2004). The wedge is bounded by two discontinuity planes, the slope "
+              "face, the upper slope and an optional tension crack; the resultant force (weight, water pressures, "
+              "seismic load and active support) is resolved along the discontinuity normals and the line of "
+              "intersection to identify the failure mode (sliding on two planes, sliding on one plane, falling). "
+              "The factor of safety is the ratio of resisting to driving forces along the sliding direction. In the "
+              "'filled crack' water model the average pressure is taken as u = γw·Hw/6. Passive support is added to "
+              "the resisting side only."),
+    "planar": ("The analysis follows the Hoek & Bray (1981) planar sliding limit-equilibrium solution: "
+               "FS = [c·A + (W·cosψp − U − V·sinψp + T·sin(θ+ψp))·tanφ] / [W·sinψp + V·cosψp − T·cos(θ+ψp)]. "
+               "Water in the tension crack is assumed triangular (V), and water on the sliding plane is assumed to "
+               "decrease linearly from the base of the crack to the toe (U). The seismic load is applied pseudo-"
+               "statically as a horizontal force at the block centroid. Results are per 1 m of slope length."),
+    "toppling": ("The analysis follows the Goodman & Bray (1976) block toppling limit-equilibrium method (Wyllie & "
+                 "Mah 2004, Chapter 9). The slope is modelled as columns of blocks separated by discontinuities "
+                 "dipping steeply into the face; toppling and sliding equilibrium is set up for each block from the "
+                 "crest to the toe to obtain the force transmitted to the block below. Triangular water pressure is "
+                 "assumed on the joints between blocks and a trapezoidal uplift distribution on the block base. The "
+                 "factor of safety is defined as the ratio of the available friction angle to the friction angle "
+                 "that holds the toe block in limiting equilibrium (tanφ/tanφ_req)."),
+}
+
+
+def METHOD(mode: str) -> str:
+    """Seçili dilde yöntem açıklaması."""
+    return (_METHOD_EN if _lang() == "EN" else _METHOD_TR).get(mode, "")
+
+
+#: Geriye dönük uyumluluk: Türkçe yöntem metinleri
+METHOD_TEXT = _METHOD_TR
+
+#: Proje künyesinin kanonik alan anahtarları (sıra rapordaki sırayla aynıdır)
+PROJECT_FIELDS = ("project", "location", "chainage", "prepared_by", "checked_by",
+                  "approved_by", "date", "doc_no", "revision")
+
+
+def PROJECT_LABEL(key: str) -> str:
+    """Künye alanının seçili dildeki başlığı."""
+    return {
+        "project": _tr("Proje", "Project"),
+        "location": _tr("Konum", "Location"),
+        "chainage": _tr("Km / Kesit", "Chainage / Section"),
+        "prepared_by": _tr("Hazırlayan", "Prepared by"),
+        "checked_by": _tr("Kontrol", "Checked by"),
+        "approved_by": _tr("Onay", "Approved by"),
+        "date": _tr("Tarih", "Date"),
+        "doc_no": _tr("Doküman No", "Document No"),
+        "revision": _tr("Revizyon", "Revision"),
+    }.get(key, key)
 REFERENCES = [
     "Hoek, E. & Bray, J.W. (1981). Rock Slope Engineering, 3rd ed. IMM, London.",
     "Wyllie, D.C. & Mah, C.W. (2004). Rock Slope Engineering: Civil and Mining, 4th ed. Spon Press.",
@@ -157,15 +211,22 @@ class Report:
             canvas.saveState(); w, h = A4
             canvas.setFillColor(NAVY); canvas.rect(0, h - 16 * mm, w, 16 * mm, fill=1, stroke=0)
             canvas.setFillColor(colors.white); canvas.setFont(self.bold, 10.5)
-            canvas.drawString(15 * mm, h - 10 * mm, "KAYA ŞEVİ STABİLİTE RAPORU")
+            canvas.drawString(15 * mm, h - 10 * mm,
+                              _tr("KAYA ŞEVİ STABİLİTE RAPORU", "ROCK SLOPE STABILITY REPORT"))
             canvas.setFont(self.font, 8.5); canvas.drawRightString(w - 15 * mm, h - 7 * mm, title)
-            canvas.drawRightString(w - 15 * mm, h - 12 * mm, f"Doküman: {proj.get('Doküman No', '—')}   Rev: {proj.get('Revizyon', '0')}")
+            canvas.drawRightString(w - 15 * mm, h - 12 * mm,
+                                   f"{_tr('Doküman', 'Document')}: {proj.get('doc_no', '—')}   "
+                                   f"Rev: {proj.get('revision', '0')}")
             canvas.setStrokeColor(LINE); canvas.setLineWidth(0.6); canvas.line(15 * mm, 14 * mm, w - 15 * mm, 14 * mm)
             canvas.setFillColor(GREY); canvas.setFont(self.font, 7.5)
-            left = f"{proj.get('Proje', '')}  ·  {proj.get('Konum', '')}"
+            left = f"{proj.get('project', '')}  ·  {proj.get('location', '')}"
             canvas.drawString(15 * mm, 9.5 * mm, left[:70])
-            canvas.drawRightString(w - 15 * mm, 9.5 * mm, f"{proj.get('Tarih', '')}   ·   Sayfa {doc.page}")
-            canvas.setFont(self.font, 6.5); canvas.drawString(15 * mm, 5.5 * mm, "Lythos Kinematic — limit denge analiz aracı")
+            canvas.drawRightString(w - 15 * mm, 9.5 * mm,
+                                   f"{proj.get('date', '')}   ·   {_tr('Sayfa', 'Page')} {doc.page}")
+            canvas.setFont(self.font, 6.5)
+            canvas.drawString(15 * mm, 5.5 * mm,
+                              _tr("Lythos Kinematic — limit denge analiz aracı",
+                                  "Lythos Kinematic — limit equilibrium analysis tool"))
             canvas.restoreState()
         return cb
 
@@ -178,9 +239,9 @@ class Report:
               text_blocks: Sequence[Tuple[str, str]] = (),
               conclusion: str = "", warnings: Sequence[str] = ()):
         st = self.st; proj = self.project
-        proj.setdefault("Tarih", datetime.date.today().strftime("%d.%m.%Y"))
+        proj.setdefault("date", datetime.date.today().strftime("%d.%m.%Y"))
         doc = SimpleDocTemplate(path, pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm, topMargin=24 * mm,
-                                bottomMargin=20 * mm, title=title, author=proj.get("Hazırlayan", ""), subject=subtitle)
+                                bottomMargin=20 * mm, title=title, author=proj.get("prepared_by", ""), subject=subtitle)
         S = []
         # Başlık bloğu
         head = [[Paragraph(title, st["title"])], [Paragraph(subtitle, st["sub"])]]
@@ -191,52 +252,57 @@ class Report:
         else:
             S += [Paragraph(title, st["title"]), Paragraph(subtitle, st["sub"])]
         S.append(Spacer(1, 4))
-        info = [(k, v) for k, v in proj.items() if k in ("Proje", "Konum", "Km / Kesit", "Hazırlayan", "Kontrol", "Onay", "Tarih", "Doküman No", "Revizyon")]
+        info = [(PROJECT_LABEL(k), proj[k]) for k in PROJECT_FIELDS if k in proj]
         S += [self._kv(info), Spacer(1, 8)]
         # KPI
         S.append(KpiRow(key_results, self.font, self.bold)); S.append(Spacer(1, 4))
         # 1 Yöntem
-        S.append(Paragraph("1. Analiz yöntemi", st["h1"]))
-        S.append(Paragraph(METHOD_TEXT.get(mode, ""), st["body"]))
+        S.append(Paragraph("1. " + _tr("Analiz yöntemi", "Method of analysis"), st["h1"]))
+        S.append(Paragraph(METHOD(mode), st["body"]))
         # 2 Girdiler
-        S.append(Paragraph("2. Girdi parametreleri", st["h1"]))
+        S.append(Paragraph("2. " + _tr("Girdi parametreleri", "Input parameters"), st["h1"]))
         S.append(self._kv(list(inputs)))
         # 3 Şekiller
         if figures:
             for k, (fig, cap) in enumerate(figures, 1):
-                f = self._figure(fig, f"Şekil {k}. {cap}")
-                S.append(KeepTogether([Paragraph("3. Şekiller", st["h1"]), f]) if k == 1 else f)
+                f = self._figure(fig, f"{_tr('Şekil', 'Figure')} {k}. {cap}")
+                S.append(KeepTogether([Paragraph("3. " + _tr("Şekiller", "Figures"), st["h1"]), f])
+                         if k == 1 else f)
         # 4 Sonuç tabloları
         if tables:
             for k, (name, rows, widths) in enumerate(tables, 1):
                 tb = self._table(rows, widths or [180 * mm / len(rows[0])] * len(rows[0]), header=True,
                                  align_right_cols=range(1, len(rows[0])))
-                parts = ([Paragraph("4. Sonuçlar", st["h1"])] if k == 1 else []) + [Paragraph(f"Tablo {k}. {name}", st["h2"]), tb]
+                caption = f"{_tr('Tablo', 'Table')} {k}. {name}"
+                parts = ([Paragraph("4. " + _tr("Sonuçlar", "Results"), st["h1"])] if k == 1 else []) + \
+                    [Paragraph(caption, st["h2"]), tb]
                 S.append(KeepTogether(parts) if len(rows) < 25 else parts[0] if k == 1 else parts[1]); 
                 if len(rows) >= 25:
-                    if k == 1: S.append(Paragraph(f"Tablo {k}. {name}", st["h2"]))
+                    if k == 1: S.append(Paragraph(caption, st["h2"]))
                     S.append(tb)
         # 5 Ayrıntılı çıktı
         if text_blocks:
             S.append(PageBreak())
-            S.append(Paragraph("5. Ayrıntılı hesap çıktıları", st["h1"]))
+            S.append(Paragraph("5. " + _tr("Ayrıntılı hesap çıktıları", "Detailed computation output"), st["h1"]))
             for name, txt in text_blocks:
                 S += [Paragraph(name, st["h2"]), Preformatted(txt, st["mono"])]
         # 6 Uyarılar / Değerlendirme
         if warnings:
-            S.append(Paragraph("6. Uyarılar", st["h1"]))
+            S.append(Paragraph("6. " + _tr("Uyarılar", "Warnings"), st["h1"]))
             for w in warnings:
                 S.append(Paragraph("• " + w, st["body"]))
-        S.append(Paragraph("7. Değerlendirme ve öneriler" if warnings else "6. Değerlendirme ve öneriler", st["h1"]))
+        S.append(Paragraph(f"{7 if warnings else 6}. "
+                           + _tr("Değerlendirme ve öneriler", "Assessment and recommendations"), st["h1"]))
         S.append(Paragraph(conclusion or "—", st["body"]))
         # Referanslar + imza
-        S.append(Paragraph("Kaynaklar", st["h1"]))
+        S.append(Paragraph(_tr("Kaynaklar", "References"), st["h1"]))
         for r in REFERENCES:
             S.append(Paragraph("• " + r, st["small"]))
         S.append(Spacer(1, 10))
-        sig = Table([["Hazırlayan", "Kontrol", "Onay"],
-                     [proj.get("Hazırlayan", ""), proj.get("Kontrol", ""), proj.get("Onay", "")],
-                     ["", "", ""], ["İmza / Tarih", "İmza / Tarih", "İmza / Tarih"]],
+        sign = _tr("İmza / Tarih", "Signature / Date")
+        sig = Table([[PROJECT_LABEL("prepared_by"), PROJECT_LABEL("checked_by"), PROJECT_LABEL("approved_by")],
+                     [proj.get("prepared_by", ""), proj.get("checked_by", ""), proj.get("approved_by", "")],
+                     ["", "", ""], [sign, sign, sign]],
                     colWidths=[60 * mm] * 3, rowHeights=[6 * mm, 6 * mm, 14 * mm, 5 * mm])
         sig.setStyle(TableStyle([("FONTNAME", (0, 0), (-1, 0), self.bold), ("FONTNAME", (0, 1), (-1, -1), self.font),
                                  ("FONTSIZE", (0, 0), (-1, -1), 8), ("GRID", (0, 0), (-1, -1), 0.4, LINE),
@@ -244,7 +310,13 @@ class Report:
                                  ("TEXTCOLOR", (0, -1), (-1, -1), GREY)]))
         S.append(KeepTogether([sig]))
         S.append(Spacer(1, 6))
-        S.append(Paragraph("Bu rapor limit denge yöntemleriyle üretilmiştir; sonuçlar girdi parametrelerinin ve saha verisinin "
-                           "kalitesine bağlıdır. Tasarım kararları yetkili geoteknik mühendisi tarafından değerlendirilmelidir.", st["small"]))
+        S.append(Paragraph(
+            _tr("Bu rapor limit denge yöntemleriyle üretilmiştir; sonuçlar girdi parametrelerinin ve saha "
+                "verisinin kalitesine bağlıdır. Tasarım kararları yetkili geoteknik mühendisi tarafından "
+                "değerlendirilmelidir.",
+                "This report was produced with limit-equilibrium methods; the results depend on the quality of "
+                "the input parameters and of the site data. Design decisions must be reviewed by a qualified "
+                "geotechnical engineer."),
+            st["small"]))
         doc.build(S, onFirstPage=self._header_footer(title), onLaterPages=self._header_footer(title))
         return path

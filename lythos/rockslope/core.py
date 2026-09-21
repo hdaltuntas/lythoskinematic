@@ -6,13 +6,16 @@ from typing import Optional, Dict, List, Tuple
 
 import numpy as np
 
+from ..i18n import T as _tr
+
 #  Vektör yardımcıları
 # --------------------------------------------------------------------------- #
 
 def unit(v: np.ndarray) -> np.ndarray:
     n = np.linalg.norm(v)
     if n < 1e-14:
-        raise ValueError("Sıfır vektör normalize edilemez.")
+        raise ValueError(_tr("Sıfır vektör normalize edilemez.",
+                             "A zero vector cannot be normalised."))
     return v / n
 
 
@@ -45,7 +48,9 @@ def intersect_3_planes(n1, p1, n2, p2, n3, p3) -> np.ndarray:
     M = np.vstack([n1, n2, n3])
     b = np.array([n1 @ p1, n2 @ p2, n3 @ p3])
     if abs(np.linalg.det(M)) < 1e-12:
-        raise ValueError("Üç düzlem tek noktada kesişmiyor (paralel/dejenere).")
+        raise ValueError(_tr("Üç düzlem tek noktada kesişmiyor (paralel/dejenere).",
+                             "The three planes do not meet at a single point "
+                             "(parallel/degenerate)."))
     return np.linalg.solve(M, b)
 
 

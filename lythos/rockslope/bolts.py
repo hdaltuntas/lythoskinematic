@@ -6,7 +6,9 @@ from typing import Optional, Dict, List, Tuple
 
 import numpy as np
 
+from ..i18n import T as _tr
 from .core import unit, trend_plunge_vector
+from .text import LABEL_WIDTH, WARNING_PREFIX
 from .wedge import WedgeInput, WedgeResult, Support, build_wedge, analyze, required_support
 from .planar import PlanarInput, PlanarResult, planar_analyze, planar_required_support
 
@@ -57,21 +59,29 @@ class BoltPattern:
 
     def summary(self) -> str:
         u = "kN/m" if self.per_metre else "kN"
-        L = ["=" * 62, "  BULON KARELAJ VE BOY TASARIMI", "=" * 62,
-             f"Gerekli destek        : {self.required_force:10.1f} {u}",
-             f"Bulon sayısı          : {self.n_bolts:10.2f} {'adet / m şev uzunluğu' if self.per_metre else 'adet (toplam)'}",
-             f"Teorik maks. aralık   : {self.spacing_theoretical:10.2f} m",
-             f"TASARIM KARELAJI      : {self.spacing:10.2f} m × {self.spacing:.2f} m",
-             f"Sağlanan kapasite     : {self.capacity_provided:10.1f} {u}",
-             "-" * 62, "Serbest boy (yüz konumu → kayma yüzeyine, bulon doğrultusunda):"]
+        w = LABEL_WIDTH
+        count_unit = (_tr("adet / m şev uzunluğu", "bolts / m of slope length") if self.per_metre
+                      else _tr("adet (toplam)", "bolts (total)"))
+        L = ["=" * 62,
+             "  " + _tr("BULON KARELAJ VE BOY TASARIMI", "BOLT SPACING AND LENGTH DESIGN"),
+             "=" * 62,
+             f"{_tr('Gerekli destek', 'Required support'):<{w}}: {self.required_force:10.1f} {u}",
+             f"{_tr('Bulon sayısı', 'Number of bolts'):<{w}}: {self.n_bolts:10.2f} {count_unit}",
+             f"{_tr('Teorik maks. aralık', 'Theoretical max. spacing'):<{w}}: {self.spacing_theoretical:10.2f} m",
+             f"{_tr('TASARIM KARELAJI', 'DESIGN SPACING'):<{w}}: {self.spacing:10.2f} m × {self.spacing:.2f} m",
+             f"{_tr('Sağlanan kapasite', 'Capacity provided'):<{w}}: {self.capacity_provided:10.1f} {u}",
+             "-" * 62,
+             _tr("Serbest boy (yüz konumu → kayma yüzeyine, bulon doğrultusunda):",
+               "Free length (face position → sliding surface, along the bolt axis):")]
         for pos, lf in self.free_lengths:
-            L.append(f"   yüzde {pos:6.2f} m : {lf:6.2f} m")
+            L.append(f"   {_tr('yüzde', 'at face'):<8} {pos:6.2f} m : {lf:6.2f} m")
         L += ["-" * 62,
-              f"Maks. serbest boy     : {self.free_max:10.2f} m",
-              f"Kök (bond) boyu       : {self.bond_length:10.2f} m",
-              f"MİNİMUM BULON BOYU    : {self.total_length:10.2f} m  (serbest + kök + pay)",
+              f"{_tr('Maks. serbest boy', 'Max. free length'):<{w}}: {self.free_max:10.2f} m",
+              f"{_tr('Kök (bond) boyu', 'Bond length'):<{w}}: {self.bond_length:10.2f} m",
+              f"{_tr('MİNİMUM BULON BOYU', 'MINIMUM BOLT LENGTH'):<{w}}: {self.total_length:10.2f} m  "
+              f"({_tr('serbest + kök + pay', 'free + bond + allowance')})",
               "=" * 62]
-        L += ["UYARI: " + w for w in self.warnings]
+        L += [WARNING_PREFIX() + x for x in self.warnings]
         return "\n".join(L)
 
 
@@ -80,8 +90,11 @@ def _design_spacing(T_req, area, spec: BoltSpec, warnings):
     s_theo = np.sqrt(area / n_req) if n_req > 0 else np.inf
     s = np.floor(min(s_theo, spec.s_max) / spec.step) * spec.step
     if s < spec.s_min:
-        warnings.append(f"Gerekli aralık ({s_theo:.2f} m) minimum aralığın ({spec.s_min} m) altında: "
-                        f"daha yüksek kapasiteli bulon/ankraj veya ek önlem gerekir. s = {spec.s_min} m alındı.")
+        warnings.append(_tr(
+            f"Gerekli aralık ({s_theo:.2f} m) minimum aralığın ({spec.s_min} m) altında: "
+            f"daha yüksek kapasiteli bulon/ankraj veya ek önlem gerekir. s = {spec.s_min} m alındı.",
+            f"The required spacing ({s_theo:.2f} m) is below the minimum ({spec.s_min} m): a higher-capacity "
+            f"bolt/anchor or an additional measure is needed. s = {spec.s_min} m was used."))
         s = spec.s_min
     n_prov = area / s ** 2
     return n_req, s_theo, s, n_prov * spec.capacity
@@ -100,7 +113,8 @@ def bolt_pattern_planar(res: PlanarResult, T_req: float, angle: float, spec: Bol
     # serbest boy: yüz üzerindeki noktadan bulon doğrultusunda kayma düzlemine
     den = np.sin(th) + np.cos(th) * np.tan(pp)
     if den <= 1e-9:
-        raise ValueError("Bulon doğrultusu kayma düzlemini kesmiyor (açı çok yukarı) — θ'yı artırın.")
+        raise ValueError(_tr("Bulon doğrultusu kayma düzlemini kesmiyor (açı çok yukarı) — θ'yı artırın.",
+                           "The bolt axis does not cross the sliding plane (angle too far up) — increase θ."))
     free = []
     for k in range(n_rows + 1):
         y = y_top * (k + 0.5) / (n_rows + 1) if k < n_rows else y_top * 0.999
@@ -111,13 +125,21 @@ def bolt_pattern_planar(res: PlanarResult, T_req: float, angle: float, spec: Bol
     Lb = spec.bond_length()
     total = np.ceil((fmax + Lb + spec.extra_length) / spec.step) * spec.step
     if total > 12:
-        warnings.append(f"Bulon boyu {total:.1f} m > 12 m: öngermeli kablo ankraj daha uygun olabilir.")
+        warnings.append(_tr(f"Bulon boyu {total:.1f} m > 12 m: öngermeli kablo ankraj daha uygun olabilir.",
+                          f"Bolt length {total:.1f} m > 12 m: a pre-stressed cable anchor may be more "
+                          f"suitable."))
     if s > 0.5 * total + 1e-9 and s > 1.5:
-        warnings.append(f"Aralık ({s:.2f} m) bulon boyunun yarısından büyük; blok bütünlüğü için "
-                        f"s ≤ L/2 ≈ {0.5*total:.2f} m önerilir.")
+        warnings.append(_tr(f"Aralık ({s:.2f} m) bulon boyunun yarısından büyük; blok bütünlüğü için "
+                          f"s ≤ L/2 ≈ {0.5 * total:.2f} m önerilir.",
+                          f"The spacing ({s:.2f} m) exceeds half the bolt length; s ≤ L/2 ≈ "
+                          f"{0.5 * total:.2f} m is recommended for block integrity."))
     if angle < 0:
-        warnings.append("Bulon yukarı eğimli (θ<0): harç enjeksiyonu/drenaj güçtür; uygulamada 5–15° aşağı eğim tercih edilir "
-                        "(kapasite kaybı için 'Gerekli kuvvet'i o açıyla yeniden hesaplayın).")
+        warnings.append(_tr("Bulon yukarı eğimli (θ<0): harç enjeksiyonu/drenaj güçtür; uygulamada 5–15° "
+                          "aşağı eğim tercih edilir (kapasite kaybı için 'Gerekli kuvvet'i o açıyla "
+                          "yeniden hesaplayın).",
+                          "The bolt points upward (θ<0): grouting/drainage is difficult; 5–15° downward is "
+                          "preferred in practice (recompute 'Required support' at that angle to see the "
+                          "capacity loss)."))
     return BoltPattern(T_req, n_req / 1.0, s, s_theo, L_face, free, fmax, Lb, total, cap, warnings, True)
 
 
@@ -148,18 +170,30 @@ def bolt_pattern_wedge(res: WedgeResult, T_req: float, trend: float, plunge: flo
             if ts:
                 free.append((float(np.linalg.norm(P - A)), float(min(ts))))
     if not free:
-        raise ValueError("Bulon doğrultusu kamayı kesmiyor — yönü kontrol edin.")
+        raise ValueError(_tr("Bulon doğrultusu kamayı kesmiyor — yönü kontrol edin.",
+                           "The bolt axis does not cross the wedge — check the direction."))
     fmax = max(f for _, f in free)
     free_sorted = sorted(free, key=lambda x: -x[1])[:6]
     Lb = spec.bond_length()
     total = np.ceil((fmax + Lb + spec.extra_length) / spec.step) * spec.step
     if total > 12:
-        warnings.append(f"Bulon boyu {total:.1f} m > 12 m: öngermeli kablo ankraj daha uygun olabilir.")
+        warnings.append(_tr(f"Bulon boyu {total:.1f} m > 12 m: öngermeli kablo ankraj daha uygun olabilir.",
+                            f"Bolt length {total:.1f} m > 12 m: a pre-stressed cable anchor may be more "
+                            f"suitable."))
     if s > 0.5 * total + 1e-9 and s > 1.5:
-        warnings.append(f"Aralık ({s:.2f} m) bulon boyunun yarısından büyük; s ≤ L/2 ≈ {0.5*total:.2f} m önerilir.")
+        warnings.append(_tr(f"Aralık ({s:.2f} m) bulon boyunun yarısından büyük; "
+                          f"s ≤ L/2 ≈ {0.5 * total:.2f} m önerilir.",
+                          f"The spacing ({s:.2f} m) exceeds half the bolt length; "
+                          f"s ≤ L/2 ≈ {0.5 * total:.2f} m is recommended."))
     if plunge < 0:
-        warnings.append("Bulon yukarı eğimli (plunge<0): harç/drenaj güçtür; uygulamada 5–15° aşağı eğim tercih edilir.")
-    warnings.append("Serbest boylar kama yüzeyinde noktasal örneklemeyle bulundu; 'yüz konumu' A ucundan uzaklıktır.")
+        warnings.append(_tr("Bulon yukarı eğimli (plunge<0): harç/drenaj güçtür; uygulamada 5–15° aşağı "
+                          "eğim tercih edilir.",
+                          "The bolt points upward (plunge<0): grouting/drainage is difficult; 5–15° "
+                          "downward is preferred in practice."))
+    warnings.append(_tr("Serbest boylar kama yüzeyinde noktasal örneklemeyle bulundu; "
+                      "'yüz konumu' A ucundan uzaklıktır.",
+                      "Free lengths were sampled point-wise on the wedge face; 'face position' is the "
+                      "distance from the apex A."))
     return BoltPattern(T_req, n_req, s, s_theo, A_face, free_sorted, fmax, Lb, total, cap, warnings, False)
 
 
@@ -200,20 +234,29 @@ class BoltCheck:
 
     def summary(self) -> str:
         u = "kN/m" if self.per_metre else "kN"
-        L = ["=" * 62, f"  SEÇİLEN TASARIM KONTROLÜ:  s = {self.spacing:.2f} m,  L = {self.length:.2f} m", "=" * 62,
-             f"Bulon sayısı          : {self.n_bolts:8.2f} {'adet/m' if self.per_metre else 'adet'}  "
-             f"(etkin: {self.n_effective:.2f})",
-             f"Sağlanan kapasite     : {self.T_provided:10.1f} {u}",
-             f"Gerekli kapasite      : {self.T_required:10.1f} {u}",
-             f"Kullanım oranı        : {100 * self.T_provided / max(self.T_required, 1e-9):8.1f} %",
-             f"Elde edilen FS        : {self.fs:10.3f}   (hedef {self.target_fs:.2f})  → "
-             f"{'UYGUN ✓' if self.ok else 'YETERSİZ ✗'}",
-             "-" * 62, "Sıra bazında (yüz konumu | serbest | kök | kapasite/bulon):"]
+        w = LABEL_WIDTH
+        unit = _tr("adet/m", "bolts/m") if self.per_metre else _tr("adet", "bolts")
+        verdict = _tr("UYGUN ✓", "ADEQUATE ✓") if self.ok else _tr("YETERSİZ ✗", "INADEQUATE ✗")
+        L = ["=" * 62,
+             "  " + _tr(f"SEÇİLEN TASARIM KONTROLÜ:  s = {self.spacing:.2f} m,  L = {self.length:.2f} m",
+                      f"CHECK OF THE SELECTED DESIGN:  s = {self.spacing:.2f} m,  L = {self.length:.2f} m"),
+             "=" * 62,
+             f"{_tr('Bulon sayısı', 'Number of bolts'):<{w}}: {self.n_bolts:8.2f} {unit}  "
+             f"({_tr('etkin', 'effective')}: {self.n_effective:.2f})",
+             f"{_tr('Sağlanan kapasite', 'Capacity provided'):<{w}}: {self.T_provided:10.1f} {u}",
+             f"{_tr('Gerekli kapasite', 'Capacity required'):<{w}}: {self.T_required:10.1f} {u}",
+             f"{_tr('Kullanım oranı', 'Utilisation'):<{w}}: "
+             f"{100 * self.T_provided / max(self.T_required, 1e-9):8.1f} %",
+             f"{_tr('Elde edilen FS', 'Achieved FS'):<{w}}: {self.fs:10.3f}   "
+             f"({_tr('hedef', 'target')} {self.target_fs:.2f})  → {verdict}",
+             "-" * 62,
+             _tr("Sıra bazında (yüz konumu | serbest | kök | kapasite/bulon):",
+               "Per row (face position | free | bond | capacity/bolt):")]
         for pos, f, b, c in self.rows:
-            flag = "" if c > 0 else "  ← kayma yüzeyini geçmiyor"
+            flag = "" if c > 0 else _tr("  ← kayma yüzeyini geçmiyor", "  ← does not cross the sliding surface")
             L.append(f"   {pos:7.2f} m | {f:6.2f} m | {max(b, 0):5.2f} m | {c:7.1f} kN{flag}")
         L.append("=" * 62)
-        L += ["UYARI: " + w for w in self.warnings]
+        L += [WARNING_PREFIX() + x for x in self.warnings]
         return "\n".join(L)
 
 
@@ -244,8 +287,10 @@ def bolt_check_planar(inp: PlanarInput, s: float, L: float, angle: float, spec: 
     fs = planar_analyze(chk).factor_of_safety if T_tot > 0 else r0.factor_of_safety
     warnings = []
     if any(c == 0 for *_, c in rows):
-        warnings.append("Bazı sıralarda bulon kayma yüzeyini geçmiyor: bu sıralar taşımaya katılmaz. "
-                        "Boyu artırın ya da sıralara farklı boy verin.")
+        warnings.append(_tr("Bazı sıralarda bulon kayma yüzeyini geçmiyor: bu sıralar taşımaya katılmaz. "
+                          "Boyu artırın ya da sıralara farklı boy verin.",
+                          "In some rows the bolts do not cross the sliding surface: those rows carry no "
+                          "load. Increase the length or use different lengths per row."))
     return BoltCheck(s, L, rows, len(rows) / s, n_eff, T_tot, max(T_req, 0.0), fs, target_fs, True, warnings)
 
 
@@ -289,14 +334,18 @@ def bolt_check_wedge(inp: WedgeInput, s: float, L: float, trend: float, plunge: 
             rows.append((float(np.linalg.norm(P - A)), float(free), float(bond), cap))
             T_tot += cap; n += 1; n_eff += 1 if cap > 0 else 0
     if n == 0:
-        raise ValueError(f"s = {s} m karelajı kama yüzeyine hiç bulon sığdırmıyor — aralığı küçültün.")
+        raise ValueError(_tr(f"s = {s} m karelajı kama yüzeyine hiç bulon sığdırmıyor — aralığı küçültün.",
+                           f"A spacing of s = {s} m fits no bolt on the wedge face — reduce the spacing."))
     sr = required_support(inp, target_fs, trend, plunge, passive)
     chk = deepcopy(inp); chk.support = Support(T_tot, trend, plunge, passive)
     fs = analyze(chk, geo).factor_of_safety if T_tot > 0 else analyze(base, geo).factor_of_safety
     rows = sorted(rows, key=lambda r: -r[1])[:10]
-    warnings = ["Sıra listesi serbest boya göre en uzun 10 bulon."]
+    warnings = [_tr("Sıra listesi serbest boya göre en uzun 10 bulon.",
+                  "The row list shows the 10 bolts with the longest free length.")]
     if n_eff < n:
-        warnings.append(f"{n - n_eff} bulon kayma yüzeyini geçmiyor (taşımaya katılmaz). Boyu artırın.")
+        warnings.append(_tr(f"{n - n_eff} bulon kayma yüzeyini geçmiyor (taşımaya katılmaz). Boyu artırın.",
+                          f"{n - n_eff} bolts do not cross the sliding surface (they carry no load). "
+                          f"Increase the length."))
     return BoltCheck(s, L, rows, n, n_eff, T_tot, sr.force if sr.achievable else np.nan, fs, target_fs, False, warnings)
 
 
@@ -317,11 +366,17 @@ def bolt_options_table(check_fn, spacings: List[float], lengths: List[float]) ->
             except Exception:
                 row += "     -- "
         lines.append(row)
-    lines.append("  (* : hedef FS sağlanıyor)")
+    lines.append("  " + _tr("(* : hedef FS sağlanıyor)", "(* : target FS is met)"))
     if best:
-        lines.append(f"  ÖNERİ: en geniş karelajda en kısa boy → s = {best[0]:.2f} m, L = {best[1]:.1f} m (FS = {best[2]:.2f})")
+        lines.append("  " + _tr(f"ÖNERİ: en geniş karelajda en kısa boy → s = {best[0]:.2f} m, "
+                              f"L = {best[1]:.1f} m (FS = {best[2]:.2f})",
+                              f"RECOMMENDATION: shortest length at the widest spacing → s = {best[0]:.2f} m, "
+                              f"L = {best[1]:.1f} m (FS = {best[2]:.2f})"))
     else:
-        lines.append("  Hiçbir kombinasyon hedefi sağlamıyor: daha yüksek kapasiteli ankraj veya daha sık aralık gerekir.")
+        lines.append("  " + _tr("Hiçbir kombinasyon hedefi sağlamıyor: daha yüksek kapasiteli ankraj veya "
+                             "daha sık aralık gerekir.",
+                             "No combination meets the target: a higher-capacity anchor or a tighter "
+                             "spacing is required."))
     return "\n".join(lines)
 
 

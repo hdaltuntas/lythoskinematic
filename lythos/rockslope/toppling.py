@@ -15,6 +15,8 @@ from typing import Optional, Dict, List, Tuple
 import numpy as np
 
 from . import style
+from ..i18n import T as _tr
+from .text import BLOCK_MODES, LABEL_WIDTH, MODE_TEXT, WARNING_PREFIX
 
 
 @dataclass
@@ -67,27 +69,41 @@ class TopplingResult:
 
     def summary(self) -> str:
         i = self.inp
-        L = ["=" * 66, "  BLOK DEVRİLME ANALİZİ  (Goodman & Bray 1976, 1 m şev uzunluğu)", "=" * 66,
+        w = LABEL_WIDTH
+        slip = (_tr("mümkün (ψd ≥ 90−ψf+φ)", "possible (ψd ≥ 90−ψf+φ)") if self.kinematic_ok else
+                _tr("koşul sağlanmıyor; blok devrilmesi y/Δx > cotψp ile kontrol edildi",
+                  "condition not met; block toppling checked with y/Δx > cotψp"))
+        L = ["=" * 66,
+             "  " + _tr("BLOK DEVRİLME ANALİZİ  (Goodman & Bray 1976, 1 m şev uzunluğu)",
+                      "BLOCK TOPPLING ANALYSIS  (Goodman & Bray 1976, 1 m slope length)"),
+             "=" * 66,
              f"ψf = {i.face_angle}°, ψs = {i.upper_angle}°, ψd = {i.disc_dip}° (ψp = {90 - i.disc_dip:.1f}°), "
              f"ψb = {i.base_angle}°, Δx = {i.block_width} m",
-             f"Blok sayısı           : {i.n_below} (tepe altı) + {i.n_above} (tepe üstü)",
-             f"Şev yüksekliği (yakl.): {self.slope_height:10.2f} m",
-             f"a1 / a2 / b           : {self.a1:.3f} / {self.a2:.3f} / {self.b:.3f} m",
-             f"Su doluluğu           : {i.water_percent:g} %   sismik αh = {i.seismic_h:g}",
-             f"Tabakalar arası kayma : {'mümkün (ψd ≥ 90−ψf+φ)' if self.kinematic_ok else 'koşul sağlanmıyor; blok devrilmesi y/Δx > cotψp ile kontrol edildi'}",
+             f"{_tr('Blok sayısı', 'Number of blocks'):<{w}}: {i.n_below} "
+             f"({_tr('tepe altı', 'below crest')}) + {i.n_above} ({_tr('tepe üstü', 'above crest')})",
+             f"{_tr('Şev yüksekliği (yakl.)', 'Slope height (approx.)'):<{w}}: {self.slope_height:10.2f} m",
+             f"{'a1 / a2 / b':<{w}}: {self.a1:.3f} / {self.a2:.3f} / {self.b:.3f} m",
+             f"{_tr('Su doluluğu', 'Water filling'):<{w}}: {i.water_percent:g} %   "
+             f"{_tr('sismik', 'seismic')} αh = {i.seismic_h:g}",
+             f"{_tr('Tabakalar arası kayma', 'Interlayer slip'):<{w}}: {slip}",
              "-" * 66,
-             f"{'Blok':>4} {'y (m)':>7} {'y/Δx':>5} {'W kN':>9} {'U kN':>8} {'V kN':>8} {'Mod':<9} {'P(n-1)':>9}"]
+             f"{_tr('Blok', 'Block'):>5} {'y (m)':>7} {'y/Δx':>5} {'W kN':>9} {'U kN':>8} {'V kN':>8} "
+             f"{_tr('Mod', 'Mode'):<9} {'P(n-1)':>9}"]
         for bl in self.blocks:
-            L.append(f"{bl['n']:>4} {bl['y']:7.2f} {bl['y'] / i.block_width:5.2f} {bl['W']:9.0f} {bl['U']:8.0f} "
-                     f"{bl['V']:8.0f} {bl['mode']:<9} {bl['P']:9.1f}")
+            L.append(f"{bl['n']:>5} {bl['y']:7.2f} {bl['y'] / i.block_width:5.2f} {bl['W']:9.0f} {bl['U']:8.0f} "
+                     f"{bl['V']:8.0f} {MODE_TEXT(bl['mode']):<9} {bl['P']:9.1f}")
+        stable = _tr("DENGESİZ", "UNSTABLE") if self.P0 > 1e-6 else _tr("dengede", "in equilibrium")
         L += ["-" * 66,
-              f"Topuk bloğu artık kuvvet P0      : {self.P0:9.1f} kN/m  ({'DENGESİZ' if self.P0 > 1e-6 else 'dengede'})",
-              f"Gerekli ankraj (topuk, φ mevcut) : {self.T_required:9.1f} kN/m  @ δ = {i.support_angle}°",
-              f"Gerekli sürtünme açısı φ_req     : {self.phi_required:9.2f}°  (mevcut {i.friction}°)",
+              f"{_tr('Topuk bloğu artık kuvvet P0', 'Toe block residual force P0'):<32}: "
+              f"{self.P0:9.1f} kN/m  ({stable})",
+              f"{_tr('Gerekli ankraj (topuk, φ mevcut)', 'Required anchor (toe, current φ)'):<32}: "
+              f"{self.T_required:9.1f} kN/m  @ δ = {i.support_angle}°",
+              f"{_tr('Gerekli sürtünme açısı φ_req', 'Required friction angle φ_req'):<32}: "
+              f"{self.phi_required:9.2f}°  ({_tr('mevcut', 'current')} {i.friction}°)",
               "=" * 66,
-              f"GÜVENLİK SAYISI (FS = tanφ / tanφ_req) : {style.fs_text(self.fs)}",
+              f"{_tr('GÜVENLİK SAYISI', 'FACTOR OF SAFETY')} (FS = tanφ / tanφ_req) : {style.fs_text(self.fs)}",
               "=" * 66]
-        L += ["UYARI: " + w for w in self.warnings]
+        L += [WARNING_PREFIX() + x for x in self.warnings]
         return "\n".join(L)
 
 
@@ -97,15 +113,19 @@ def _geometry(i: TopplingInput):
     dx = i.block_width
     a1 = dx * np.tan(pf - pp); a2 = dx * np.tan(pp - ps); b = dx * np.tan(pb - pp)
     if a1 - b <= 0:
-        raise ValueError("a1 − b ≤ 0: blok yükseklikleri artmıyor (ψf çok küçük ya da ψb çok büyük).")
+        raise ValueError(_tr("a1 − b ≤ 0: blok yükseklikleri artmıyor (ψf çok küçük ya da ψb çok büyük).",
+                           "a1 − b ≤ 0: block heights do not increase (ψf too small or ψb too large)."))
     if b < 0:
-        raise ValueError("ψb < ψp: basamaklı taban eğimi blok tabanı eğiminden küçük olamaz.")
+        raise ValueError(_tr("ψb < ψp: basamaklı taban eğimi blok tabanı eğiminden küçük olamaz.",
+                           "ψb < ψp: the stepped base angle cannot be flatter than the block base."))
     N = i.n_below + i.n_above
     ys = []
     for n in range(1, N + 1):
         ys.append(n * (a1 - b) if n <= i.n_below else ys[-1] - a2 - b)
     if any(y <= 0 for y in ys):
-        raise ValueError("Tepe üstü blok yüksekliği sıfırın altına düşüyor: tepe üstü blok sayısını azaltın.")
+        raise ValueError(_tr("Tepe üstü blok yüksekliği sıfırın altına düşüyor: tepe üstü blok sayısını azaltın.",
+                           "Block height above the crest falls below zero: reduce the number of blocks above "
+                           "the crest."))
     return pp, a1, a2, b, ys
 
 
@@ -166,7 +186,9 @@ def toppling_analyze(i: TopplingInput) -> TopplingResult:
     i = deepcopy(i)
     warnings = []
     if i.friction >= 45:
-        warnings.append("φ ≥ 45°: kayma denklemindeki (1 − tan²φ) terimi işaret değiştirir; sonuçlar güvenilmez.")
+        warnings.append(_tr("φ ≥ 45°: kayma denklemindeki (1 − tan²φ) terimi işaret değiştirir; sonuçlar güvenilmez.",
+                          "φ ≥ 45°: the (1 − tan²φ) term in the sliding equation changes sign; results are "
+                          "unreliable."))
     tanphi = np.tan(np.radians(i.friction))
     P0, blocks, ys, a1, a2, b, h = _march(i, tanphi, i.support_force)
     kin_ok = i.disc_dip >= (90 - i.face_angle) + i.friction - 1e-9
@@ -177,7 +199,10 @@ def toppling_analyze(i: TopplingInput) -> TopplingResult:
     lo, hi = 0.5, 44.9
     if p0_at(hi) > 1e-6:
         phi_req, fs = np.nan, 0.0
-        warnings.append("φ = 45° ile bile denge sağlanmıyor — FS tanımsız (0 alındı). Su/sismik yükü ve geometriyi kontrol edin.")
+        warnings.append(_tr("φ = 45° ile bile denge sağlanmıyor — FS tanımsız (0 alındı). "
+                          "Su/sismik yükü ve geometriyi kontrol edin.",
+                          "Equilibrium is not reached even at φ = 45° — FS undefined (taken as 0). "
+                          "Check the water/seismic load and the geometry."))
     elif p0_at(lo) <= 1e-6:
         phi_req, fs = lo, np.inf
     else:
@@ -262,14 +287,14 @@ def plot_toppling(res: TopplingResult, ax=None, show: bool = True, savepath: Opt
         style.arrow(ax, pt[0] - Ln * np.cos(d), pt[1] + Ln * np.sin(d), Ln * np.cos(d), -Ln * np.sin(d), style.BOLT,
                     f"T = {i.support_force:,.0f} kN/m @ {i.support_angle:g}°", lpos="start")
     ax.set_aspect("equal"); ax.set_xlim(xmin, xmax); ax.set_ylim(ymin, allp[:, 1].max() * 1.18)
-    ax.set_xlabel("Yatay mesafe (m)"); ax.set_ylabel("Kot (m)")
-    style.title(ax, "Blok devrilme — kesit ve blok modları",
+    ax.set_xlabel(_tr("Yatay mesafe (m)", "Horizontal distance (m)")); ax.set_ylabel(_tr("Kot (m)", "Elevation (m)"))
+    style.title(ax, _tr("Blok devrilme — kesit ve blok modları", "Block toppling — section and block modes"),
                 f"ψf = {i.face_angle:g}°, ψs = {i.upper_angle:g}°, ψd = {i.disc_dip:g}°, ψb = {i.base_angle:g}°, Δx = {dx:g} m, "
-                f"φ = {i.friction:g}°, su %{i.water_percent:g}, αh = {i.seismic_h:g}")
-    handles = [Patch(fc=style.MODE_COLORS[k], ec=style.NAVY, label=lab) for k, lab in
-               (("stabil", "Stabil"), ("devrilme", "Devrilme"), ("kayma", "Kayma"))]
+                f"φ = {i.friction:g}°, {_tr('su', 'water')} %{i.water_percent:g}, αh = {i.seismic_h:g}")
+    handles = [Patch(fc=style.MODE_COLORS[k], ec=style.NAVY, label=MODE_TEXT(k).capitalize())
+               for k in BLOCK_MODES]
     if i.water_percent > 0:
-        handles.append(plt.Line2D([0], [0], color=style.WATER, lw=2.4, label="Eklem su seviyesi"))
+        handles.append(plt.Line2D([0], [0], color=style.WATER, lw=2.4, label=_tr("Eklem su seviyesi", "Joint water level")))
     ax.legend(handles=handles, loc="upper left", fontsize=8)
     style.result_box(ax, [f"FS = {style.fs_text(res.fs)}", f"φ_req = {res.phi_required:.2f}°",
                           f"P0 = {res.P0:,.0f} kN/m", f"T_req = {res.T_required:,.0f} kN/m"], loc="lower right")

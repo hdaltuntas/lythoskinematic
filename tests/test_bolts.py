@@ -9,8 +9,8 @@ noktalarını doğru sınıflandırdığını ve fonksiyonun hatasız çalışt�
 import numpy as np
 import pytest
 
-from rockslope.wedge import WedgeInput, Joint, Plane, required_support
-from rockslope.bolts import BoltSpec, bolt_check_wedge
+from lythos.rockslope.wedge import WedgeInput, Joint, Plane, required_support
+from lythos.rockslope.bolts import BoltSpec, bolt_check_wedge
 
 
 @pytest.fixture

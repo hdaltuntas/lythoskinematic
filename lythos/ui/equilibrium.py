@@ -1,224 +1,49 @@
 """
-kinematix.py — Kinematix: kaya şevi stabilite analizi için PySide6 (LGPL) masaüstü arayüzü.
-Hesap çekirdeği `rockslope/` paketindedir (bu arayüz ondan bağımsız).
+lythos.ui.equilibrium — Lythos Kinematic / Limit Denge paneli.
 
-Çalıştırma:  python kinematix.py
-Gereksinim:  pip install PySide6 numpy scipy matplotlib reportlab
+Kama (Swedge), düzlemsel (RocPlane) ve blok devrilme (RocTopple) limit denge
+analizleri, bulon karelaj/boy tasarımı ve PDF rapor.
+(Eski Kinematix uygulamasının, Lythos Suite içine gömülebilen panel hâli.)
+
+Panel bir QMainWindow'dur: kendi araç çubuğunu, girdi dock'unu ve durum çubuğunu
+taşır; suite kabuğu onu bir sekmenin içine yerleştirir.
 """
 from __future__ import annotations
 
-import os
 import sys
 import json
 import datetime
 import traceback
 
-# --- Qt bağlaması matplotlib'den ÖNCE ve tek başına yüklenmeli ---------------
-# Aksi hâlde matplotlib makinede PyQt5/PyQt6 bulursa önce onu yükler; ikinci bir Qt6Core.dll
-# aynı işleme girince Windows "DLL load failed / belirtilen yordam bulunamadı" hatası verir.
-os.environ["QT_API"] = "pyside6"
-from PySide6.QtCore import Qt, QSettings, QThread, Signal, QSize
-from PySide6.QtGui import QAction, QFont, QColor, QKeySequence
-from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox,
-                               QLabel, QLineEdit, QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox, QTabWidget,
-                               QPlainTextEdit, QTableWidget, QTableWidgetItem, QScrollArea, QDockWidget,
-                               QStackedWidget, QFileDialog, QMessageBox, QToolBar, QStatusBar, QSizePolicy,
-                               QHeaderView, QProgressBar)
+from . import qt  # noqa: F401  (Qt bağlamasını matplotlib'den önce sabitler)
+
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QAction, QColor, QFont, QKeySequence
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDockWidget, QDoubleSpinBox,
+                               QFileDialog, QFormLayout, QGroupBox, QHBoxLayout, QHeaderView,
+                               QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit,
+                               QProgressBar, QScrollArea, QSizePolicy, QSpinBox, QStackedWidget,
+                               QStatusBar, QTabWidget, QTableWidget, QTableWidgetItem, QToolBar,
+                               QVBoxLayout, QWidget)
 
 import numpy as np
-import matplotlib
-matplotlib.use("QtAgg")
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
 
-from rockslope import (Joint, Plane, TensionCrack, Water, Seismic, Support, WedgeInput, analyze, plot_wedge,
-                       plot_stereonet, required_support, PlanarInput, planar_analyze, planar_required_support,
-                       plot_planar, BoltSpec, bolt_pattern_planar, bolt_pattern_wedge, bolt_check_planar,
-                       bolt_check_wedge, STANDARD_LENGTHS, TopplingInput, toppling_analyze,
-                       toppling_required_support, plot_toppling, Report)
-from rockslope import style as rstyle
-
-APP_NAME = "Kinematix"
-ORG = "KGM-ArGe"
-
-# --------------------------------------------------------------------------- #
-#  Açık / koyu tema (QSS) — "Fusion" temel stilinin üzerine
-# --------------------------------------------------------------------------- #
-
-def _build_qss(bg, bg2, panel, border, text, muted, accent, accent_hover, accent_text, selection):
-    """Ortak QSS şablonu; renk paletini değiştirerek açık/koyu tema üretir."""
-    return f"""
-        QMainWindow, QDialog {{ background: {bg}; }}
-        QWidget {{ color: {text}; selection-background-color: {selection}; selection-color: {accent_text}; }}
-        QToolTip {{ background: {panel}; color: {text}; border: 1px solid {border}; padding: 4px; border-radius: 4px; }}
-
-        QToolBar {{ background: {panel}; border: none; border-bottom: 1px solid {border}; spacing: 6px; padding: 5px 8px; }}
-        QToolBar QLabel {{ color: {muted}; }}
-        QToolBar QComboBox {{ min-height: 22px; }}
-        QToolButton {{ background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 5px 10px; color: {text}; }}
-        QToolButton:hover {{ background: {bg2}; border-color: {border}; }}
-        QToolButton:pressed {{ background: {selection}; }}
-
-        QStatusBar {{ background: {panel}; border-top: 1px solid {border}; color: {muted}; }}
-        QStatusBar::item {{ border: none; }}
-
-        QDockWidget {{ color: {text}; titlebar-close-icon: none; }}
-        QDockWidget::title {{ background: {bg2}; padding: 7px 10px; color: {text}; font-weight: 600;
-                              border-bottom: 1px solid {border}; }}
-
-        QScrollArea {{ background: {bg}; border: none; }}
-        QScrollArea > QWidget > QWidget {{ background: {bg}; }}
-
-        QGroupBox {{ background: {panel}; border: 1px solid {border}; border-radius: 8px;
-                    margin-top: 12px; padding-top: 6px; font-weight: 600; color: {accent}; }}
-        QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 5px; }}
-
-        QLabel {{ background: transparent; }}
-
-        QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox, QPlainTextEdit {{
-            background: {bg}; border: 1px solid {border}; border-radius: 5px; padding: 3px 6px; color: {text}; }}
-        QLineEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus, QComboBox:focus, QPlainTextEdit:focus {{
-            border: 1px solid {accent}; }}
-        QLineEdit:disabled, QDoubleSpinBox:disabled, QSpinBox:disabled {{ color: {muted}; background: {bg2}; }}
-        QComboBox::drop-down {{ border: none; width: 18px; }}
-        QComboBox QAbstractItemView {{ background: {panel}; border: 1px solid {border};
-                                       selection-background-color: {accent}; selection-color: {accent_text}; }}
-        QCheckBox {{ spacing: 6px; background: transparent; }}
-
-        QPushButton {{ background: {panel}; border: 1px solid {border}; border-radius: 6px;
-                      padding: 5px 12px; color: {text}; }}
-        QPushButton:hover {{ border-color: {accent}; }}
-        QPushButton:pressed {{ background: {bg2}; }}
-        QPushButton:default {{ background: {accent}; color: {accent_text}; border-color: {accent}; }}
-        QPushButton:default:hover {{ background: {accent_hover}; }}
-
-        QTabWidget::pane {{ border: 1px solid {border}; border-radius: 6px; background: {panel}; top: -1px; }}
-        QTabBar::tab {{ background: {bg2}; border: 1px solid {border}; border-bottom: none; color: {muted};
-                       padding: 7px 16px; margin-right: 2px; border-top-left-radius: 6px; border-top-right-radius: 6px; }}
-        QTabBar::tab:selected {{ background: {panel}; color: {accent}; font-weight: 600; }}
-        QTabBar::tab:hover {{ color: {text}; }}
-
-        QTableWidget {{ background: {panel}; alternate-background-color: {bg2}; gridline-color: {border};
-                       border: 1px solid {border}; border-radius: 6px; }}
-        QHeaderView {{ background: {bg2}; }}
-        QHeaderView::section {{ background: {bg2}; color: {text}; padding: 5px; border: none;
-                               border-bottom: 1px solid {border}; border-right: 1px solid {border}; font-weight: 600; }}
-        QTableWidget::item:selected {{ background: {selection}; color: {accent_text}; }}
-        QTableCornerButton::section {{ background: {bg2}; border: none; border-bottom: 1px solid {border};
-                                       border-right: 1px solid {border}; }}
-
-        QProgressBar {{ border: 1px solid {border}; border-radius: 5px; text-align: center; background: {bg2};
-                       color: {text}; }}
-        QProgressBar::chunk {{ background: {accent}; border-radius: 4px; }}
-
-        QSplitter::handle {{ background: {border}; }}
-        QMenu {{ background: {panel}; border: 1px solid {border}; color: {text}; }}
-        QMenu::item:selected {{ background: {accent}; color: {accent_text}; }}
-
-        QScrollBar:vertical {{ background: {bg}; width: 13px; margin: 0; }}
-        QScrollBar::handle:vertical {{ background: {border}; min-height: 24px; border-radius: 5px; margin: 2px; }}
-        QScrollBar::handle:vertical:hover {{ background: {accent}; }}
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
-        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: none; }}
-        QScrollBar:horizontal {{ background: {bg}; height: 13px; margin: 0; }}
-        QScrollBar::handle:horizontal {{ background: {border}; min-width: 24px; border-radius: 5px; margin: 2px; }}
-        QScrollBar::handle:horizontal:hover {{ background: {accent}; }}
-        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0; }}
-        QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{ background: none; }}
-        QScrollBar::corner {{ background: {bg}; }}
-    """
+from ..rockslope import (Joint, Plane, TensionCrack, Water, Seismic, Support, WedgeInput, analyze,
+                         plot_wedge, plot_stereonet, required_support, PlanarInput, planar_analyze,
+                         planar_required_support, plot_planar, BoltSpec, bolt_pattern_planar,
+                         bolt_pattern_wedge, bolt_check_planar, bolt_check_wedge, STANDARD_LENGTHS,
+                         TopplingInput, toppling_analyze, toppling_required_support, plot_toppling, Report)
+from ..rockslope import style as rstyle
+from .widgets import MplTab, Num, Opt, Worker, note
 
 
-THEME_LIGHT = _build_qss(bg="#ffffff", bg2="#eef1f5", panel="#ffffff", border="#d7dce3",
-                         text="#1f2937", muted="#5b6770", accent="#1f3b5a", accent_hover="#2874a6",
-                         accent_text="#ffffff", selection="#cfe0ee")
-
-THEME_DARK = _build_qss(bg="#20242b", bg2="#2a2f38", panel="#262b33", border="#3a4048",
-                        text="#e6e9ee", muted="#9aa4b2", accent="#5aa9d6", accent_hover="#6fb8e0",
-                        accent_text="#12161c", selection="#3a5570")
-
-THEMES = {"light": THEME_LIGHT, "dark": THEME_DARK}
-
-# --------------------------------------------------------------------------- #
-#  Yardımcı widget'lar
-# --------------------------------------------------------------------------- #
-
-class Num(QDoubleSpinBox):
-    """Sayısal alan: aralık, ondalık, birim soneki."""
-    def __init__(self, value=0.0, lo=-1e9, hi=1e9, dec=2, suffix="", step=1.0):
-        super().__init__()
-        self.setRange(lo, hi); self.setDecimals(dec); self.setSingleStep(step); self.setValue(value)
-        if suffix:
-            self.setSuffix(" " + suffix)
-        self.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
-        self.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.setMinimumWidth(70); self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-
-    def sizeHint(self):
-        return QSize(90, super().sizeHint().height())
-
-    def minimumSizeHint(self):
-        return QSize(70, super().minimumSizeHint().height())
-
-
-class Opt(QLineEdit):
-    """Boş bırakılabilen sayısal alan (boş = otomatik)."""
-    def __init__(self, placeholder="otomatik"):
-        super().__init__(); self.setPlaceholderText(placeholder); self.setMinimumWidth(70)
-        self.setAlignment(Qt.AlignmentFlag.AlignRight); self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-
-    def value(self):
-        t = self.text().strip().replace(",", ".")
-        return float(t) if t else None
-
-
-def note(text):
-    l = QLabel(text); l.setWordWrap(True); l.setStyleSheet("color:#5b6770;"); return l
-
-
-class MplTab(QWidget):
-    """Matplotlib tuvali + araç çubuğu."""
-    def __init__(self):
-        super().__init__()
-        self.fig = Figure(figsize=(9, 6)); self.canvas = FigureCanvasQTAgg(self.fig)
-        self.toolbar = NavigationToolbar2QT(self.canvas, self)
-        lay = QVBoxLayout(self); lay.setContentsMargins(0, 0, 0, 0); lay.addWidget(self.toolbar); lay.addWidget(self.canvas)
-
-    def clear(self):
-        self.fig.clear(); self.canvas.draw_idle()
-
-    def ax(self, projection=None):
-        self.fig.clear(); return self.fig.add_subplot(111, projection=projection)
-
-    def draw(self):
-        self.fig.tight_layout(); self.canvas.draw_idle()
-
-
-class Worker(QThread):
-    """Uzun hesapları (bulon öneri matrisi) arka planda çalıştırır."""
-    done = Signal(object); failed = Signal(str)
-
-    def __init__(self, fn, *args):
-        super().__init__(); self.fn, self.args = fn, args
-
-    def run(self):
-        try:
-            self.done.emit(self.fn(*self.args))
-        except Exception as e:
-            self.failed.emit(f"{e}\n{traceback.format_exc()}")
-
-
-# --------------------------------------------------------------------------- #
-#  Ana pencere
-# --------------------------------------------------------------------------- #
-
-class MainWindow(QMainWindow):
+class EquilibriumPanel(QMainWindow):
     MODES = [("wedge", "Kama (Swedge)"), ("planar", "Düzlemsel (RocPlane)"), ("toppling", "Devrilme (RocTopple)")]
 
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Kinematix — Kaya Şevi Stabilite Analizi")
-        self.resize(1440, 900)
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        # Gömülü panel: pencere değil, sekme içeriği olarak yaşar.
+        self.setWindowFlags(Qt.WindowType.Widget)
         self.f = {}                # key -> widget
         self.last = None           # (mode, inp, res, figs)
         self.worker = None
@@ -226,7 +51,6 @@ class MainWindow(QMainWindow):
         self._build_dock()
         self._build_central()
         self.setStatusBar(QStatusBar())
-        self._load_settings()
         self._switch_mode()
 
     # ---------------------------------------------------------------- UI
@@ -256,19 +80,6 @@ class MainWindow(QMainWindow):
 
         spacer = QWidget(); spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         tb.addWidget(spacer)
-        self.a_theme = act("🌙 Koyu tema", self.on_toggle_theme, tip="Açık/koyu temayı değiştir")
-
-    def _apply_theme(self, name: str):
-        self.theme = name if name in THEMES else "light"
-        app = QApplication.instance()
-        if app is not None:
-            app.setStyleSheet(THEMES[self.theme])
-        if hasattr(self, "a_theme"):
-            self.a_theme.setText("☀ Açık tema" if self.theme == "dark" else "🌙 Koyu tema")
-
-    def on_toggle_theme(self):
-        self._apply_theme("dark" if self.theme == "light" else "light")
-        QSettings(ORG, APP_NAME).setValue("theme", self.theme)
 
     def _build_dock(self):
         dock = QDockWidget("Girdiler", self); dock.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable)
@@ -688,7 +499,7 @@ class MainWindow(QMainWindow):
         if not self.last:
             QMessageBox.warning(self, "Rapor", "Önce bir analiz çalıştırın (F5)."); return
         mode, inp, res, figs = self.last
-        path, _ = QFileDialog.getSaveFileName(self, "PDF raporu kaydet", f"kinematix_{mode}_{datetime.date.today()}.pdf", "PDF (*.pdf)")
+        path, _ = QFileDialog.getSaveFileName(self, "PDF raporu kaydet", f"lythos_{mode}_{datetime.date.today()}.pdf", "PDF (*.pdf)")
         if not path: return
         v = self.val
         project = {"Proje": v("rp_proj") or "—", "Konum": v("rp_loc") or "—", "Km / Kesit": v("rp_km") or "—",
@@ -785,7 +596,7 @@ class MainWindow(QMainWindow):
             if k in self.f: self.setval(k, v)
 
     def on_save(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Girdileri kaydet", "kinematix_girdi.json", "JSON (*.json)")
+        path, _ = QFileDialog.getSaveFileName(self, "Girdileri kaydet", "lythos_girdi.json", "JSON (*.json)")
         if not path: return
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(self._state(), fh, indent=2, ensure_ascii=False)
@@ -798,28 +609,40 @@ class MainWindow(QMainWindow):
             self._apply_state(json.load(fh))
         self.statusBar().showMessage(f"Yüklendi: {path}", 6000)
 
-    def _load_settings(self):
-        s = QSettings(ORG, APP_NAME)
-        self._apply_theme(s.value("theme", "light"))
-        raw = s.value("state")
-        if raw:
-            try: self._apply_state(json.loads(raw))
-            except Exception: pass
-        geo = s.value("geometry")
-        if geo: self.restoreGeometry(geo)
+    # dışa açık ad: suite girdi durumunu kaydedip geri yükler
+    state = _state
+    apply_state = _apply_state
 
-    def closeEvent(self, ev):
-        s = QSettings(ORG, APP_NAME)
-        s.setValue("state", json.dumps(self._state(), ensure_ascii=False)); s.setValue("geometry", self.saveGeometry())
-        super().closeEvent(ev)
+    # ---------------------------------------------------------------- kinematik taramadan aktarım
+    def apply_from_screening(self, payload: dict):
+        """Kinematik tarama panelinden gelen kritik bileşeni girdi olarak yükler.
 
+        Kama modunda iki eklem takımı ve şev yüzü, düzlemsel/devrilme modunda ise
+        kayma/süreksizlik açıları ile şev yüzü doldurulur; sürtünme açısı her
+        durumda taramada kullanılan değerle eşitlenir.
+        """
+        mode_key = {0: "planar", 1: "wedge", 2: "toppling"}[int(payload["mode"])]
+        idx = self.mode_box.findData(mode_key)
+        if idx >= 0:
+            self.mode_box.setCurrentIndex(idx)
+        phi, face_dip, face_dd = payload["friction"], payload["slope_dip"], payload["slope_dir"]
 
-def main():
-    app = QApplication(sys.argv)
-    app.setApplicationName(APP_NAME); app.setOrganizationName(ORG); app.setStyle("Fusion")
-    win = MainWindow(); win.show()
-    sys.exit(app.exec())
+        if mode_key == "wedge":
+            (d1, dd1), (d2, dd2) = payload["j1"], payload["j2"]
+            for key, v in (("j1_dip", d1), ("j1_dd", dd1), ("j1_phi", phi),
+                           ("j2_dip", d2), ("j2_dd", dd2), ("j2_phi", phi),
+                           ("face_dip", face_dip), ("face_dd", face_dd)):
+                self.setval(key, v)
+        elif mode_key == "planar":
+            for key, v in (("p_plane", payload["dip"]), ("p_face", min(face_dip, 89.9)),
+                           ("p_phi", phi)):
+                self.setval(key, v)
+        else:
+            for key, v in (("t_disc", payload["dip"]), ("t_face", min(face_dip, 89.9)),
+                           ("t_phi", min(phi, 44.9))):
+                self.setval(key, v)
 
-
-if __name__ == "__main__":
-    main()
+        self.statusBar().showMessage(
+            f"Kinematik taramadan aktarıldı: {payload.get('name', '—')} "
+            f"(φ = {phi:g}°, şev {face_dip:g}/{face_dd:g})", 12000)
+        self.on_analyze()

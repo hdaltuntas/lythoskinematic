@@ -1,5 +1,7 @@
 """
-rockslope — Kaya şevi stabilite analiz paketi (Hoek & Bray limit denge yöntemleri)
+lythos.rockslope — kaya şevi limit denge çekirdeği (Hoek & Bray, Goodman & Bray)
+
+Lythos Kinematic modülünün limit denge hesaplarını yapar; arayüzden bağımsızdır.
 
 Modüller:
   core      : ortak vektör/geometri yardımcıları

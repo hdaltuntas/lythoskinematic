@@ -9,6 +9,7 @@ from scipy.spatial import ConvexHull
 
 from .core import *
 from . import style
+from .. import stereonet as _st
 
 #  Girdi veri yapıları
 # --------------------------------------------------------------------------- #
@@ -626,24 +627,14 @@ def hoek_bray_short(inp: WedgeInput, geo: Optional[WedgeGeometry] = None) -> flo
 # --------------------------------------------------------------------------- #
 
 def _stereo_xy(v: np.ndarray, equal_area: bool = True) -> Tuple[float, float]:
-    """Alt yarımküre çizgi vektörü -> stereonet (x, y)."""
-    tr, pl = vector_to_trend_plunge(v)
-    pl = max(pl, 0.0)
-    theta = np.radians(90.0 - pl) / 2.0
-    r = np.sqrt(2) * np.sin(theta) if equal_area else np.tan(theta)
-    r /= (np.sqrt(2) if equal_area else 1.0)   # birim daireye normalize
-    return r * np.sin(np.radians(tr)), r * np.cos(np.radians(tr))
+    """Alt yarımküre çizgi vektörü -> stereonet (x, y). Ortak çekirdeğe (lythos.stereonet) delege eder."""
+    x, y = _st.stereo_xy(v, equal_area)
+    return float(x), float(y)
 
 
 def _great_circle(dip: float, dipdir: float, equal_area: bool = True, n: int = 181):
-    d = down_dip_vector(dip, dipdir)
-    strike = np.array([np.sin(np.radians(dipdir + 90)), np.cos(np.radians(dipdir + 90)), 0.0])
-    xs, ys = [], []
-    for t in np.linspace(0, np.pi, n):
-        v = np.cos(t) * strike + np.sin(t) * d
-        x, y = _stereo_xy(v, equal_area)
-        xs.append(x); ys.append(y)
-    return xs, ys
+    """Düzlemin büyük dairesi -> (xs, ys). Ortak çekirdeğe delege eder."""
+    return _st.great_circle(dip, dipdir, equal_area, n)
 
 
 

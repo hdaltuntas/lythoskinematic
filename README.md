@@ -170,6 +170,10 @@ The cores are pinned against closed-form solutions:
   results, background jobs finish without deadlocking the state poll, and the HTTP routes
   return PNG figures, PDF reports and plain error messages rather than stack traces
 
+## Changelog
+
+Release history is in [CHANGELOG.md](CHANGELOG.md).
+
 ## Releasing
 
 `tools/upload_to_pypi.py` builds the distribution and uploads it, from a terminal

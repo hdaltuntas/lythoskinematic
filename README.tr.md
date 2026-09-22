@@ -169,6 +169,10 @@ pytest
   arka plan işleri durum yoklamasını kilitlemeden biter ve HTTP yönlendirmeleri yığın
   izi yerine PNG figür, PDF rapor ve sade hata iletisi döndürür
 
+## Değişiklik günlüğü
+
+Sürüm geçmişi [CHANGELOG.tr.md](CHANGELOG.tr.md) dosyasındadır.
+
 ## Sürüm yayımlama
 
 `tools/upload_to_pypi.py` dağıtımı derler ve yükler; terminalden de, Thonny gibi

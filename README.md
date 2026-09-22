@@ -170,6 +170,19 @@ The cores are pinned against closed-form solutions:
   results, background jobs finish without deadlocking the state poll, and the HTTP routes
   return PNG figures, PDF reports and plain error messages rather than stack traces
 
+## Releasing
+
+`tools/upload_to_pypi.py` builds the distribution and uploads it, from a terminal
+or from an editor such as Thonny: run it and answer the questions. It makes its
+own environment for `build` and `twine`, refuses a version that is already on
+PyPI, and sends nothing before showing what it is about to upload. Set
+`TEST_PYPI = True` at the top to rehearse on TestPyPI.
+
+The token is never stored in the repository: it is read from `~/.pypirc` or typed
+in, and passed straight to twine. A project's **first** upload needs a token
+scoped to the entire account — a project-scoped token can only be created once
+the project exists.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

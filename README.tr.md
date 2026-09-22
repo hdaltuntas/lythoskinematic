@@ -169,6 +169,18 @@ pytest
   arka plan işleri durum yoklamasını kilitlemeden biter ve HTTP yönlendirmeleri yığın
   izi yerine PNG figür, PDF rapor ve sade hata iletisi döndürür
 
+## Sürüm yayımlama
+
+`tools/upload_to_pypi.py` dağıtımı derler ve yükler; terminalden de, Thonny gibi
+bir düzenleyiciden de çalışır: çalıştırıp sorulara yanıt vermek yeterli. `build`
+ve `twine` için kendi ortamını kurar, PyPI'da zaten var olan bir sürümü reddeder
+ve ne yükleyeceğini göstermeden hiçbir şey göndermez. Prova için dosyanın başındaki
+`TEST_PYPI = True` yapılır.
+
+Token depoda tutulmaz: `~/.pypirc` dosyasından okunur ya da sorulur ve doğrudan
+twine'a geçirilir. Bir projenin **ilk** yüklemesi hesap kapsamlı ("Entire account")
+bir token ister — projeye özel token ancak proje var olduktan sonra üretilebilir.
+
 ## Lisans
 
 MIT — bkz. [LICENSE](LICENSE).

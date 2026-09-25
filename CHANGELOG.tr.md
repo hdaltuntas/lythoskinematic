@@ -5,6 +5,11 @@
 Kayda değer değişiklikler, en yenisi önce. Sürüm numaraları
 [anlamsal sürümleme](https://semver.org) kuralını izler.
 
+## Yayımlanmamış
+
+- Lisans MIT'ten GNU Affero Genel Kamu Lisansı sürüm 3'e (`AGPL-3.0-only`) geçti.
+  Daha önce yayımlanan sürümler MIT lisansıyla kalır.
+
 ## 0.1.0 — 22.09.2026
 
 İlk sürüm. [PyPI](https://pypi.org/project/lythoskinematic/0.1.0/)

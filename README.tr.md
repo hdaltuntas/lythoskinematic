@@ -187,4 +187,13 @@ bir token ister — projeye özel token ancak proje var olduktan sonra üretileb
 
 ## Lisans
 
-MIT — bkz. [LICENSE](LICENSE).
+Telif hakkı © 2026 Hasan Deniz Altuntaş
+
+Lythos Kinematic özgür yazılımdır: Özgür Yazılım Vakfı'nın yayımladığı
+[GNU Affero Genel Kamu Lisansı, sürüm 3](LICENSE) koşulları altında yeniden dağıtabilir ve/veya
+değiştirebilirsiniz. Yararlı olması umuduyla dağıtılır, ancak HİÇBİR GARANTİSİ YOKTUR;
+SATILABİLİRLİK ya da BELİRLİ BİR AMACA UYGUNLUK zımni garantisi dahi yoktur.
+
+Değiştirilmiş bir sürümü kullanıcılara ağ üzerinden sunan, o sürümün kaynak kodunu da onlara
+sunmak zorundadır (lisansın 13. bölümü). Bu değişiklikten önce yayımlanan sürümler MIT
+lisansıyla dağıtılmıştır ve o lisansla kullanılmaya devam edebilir.

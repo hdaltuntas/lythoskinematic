@@ -4,6 +4,11 @@
 
 Notable changes, newest first. Versions follow [semantic versioning](https://semver.org).
 
+## Unreleased
+
+- The licence changes from MIT to the GNU Affero General Public License, version 3
+  (`AGPL-3.0-only`). Versions already published keep the MIT licence they were released under.
+
 ## 0.1.0 — 2026-09-22
 
 First release. [PyPI](https://pypi.org/project/lythoskinematic/0.1.0/)
